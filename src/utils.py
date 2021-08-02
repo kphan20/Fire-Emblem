@@ -6,11 +6,13 @@ TILE_SCALE = 5
 
 BLUE_TINT=(10, 100, 255)
 RED_TINT=(255, 0, 50)
+GREEN_TINT=(0, 255, 255)
 NORMAL_TINT=(255, 255, 255)
 class Tile(pyglet.sprite.Sprite):
-    def __init__(self, img, x, y, batch, group):
+    def __init__(self, img, x, y, batch, group, tile_type):
         super().__init__(img=img, x=x, y=y, batch=batch, group=group)
         self.scale= TILE_SCALE
+        self.tile_type = tile_type
         self.character = None
         self.arrow = None
     def change_tint(self, color):
@@ -28,10 +30,14 @@ def generate_map_tiles(batch, group):
     offset_y = 0
     for y in range(11):
         row = []
-        for x in range(20):
-            row.append(Tile(resources.tile, offset_x, offset_y, batch, group))
+        for x in range(100):
+            row.append(Tile(resources.tile, offset_x, offset_y, batch, group, 0))
             offset_x += TILE_SIZE * TILE_SCALE
         offset_x = 0
         offset_y += TILE_SIZE * TILE_SCALE
         map_arr.append(row)
+    map_arr[5][5].tile_type = 1
+    map_arr[3][4].tile_type = 1
+    map_arr[4][3].tile_type = 1
+    map_arr[5][5].img = resources.tile2
     return map_arr
