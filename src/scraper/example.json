@@ -1,0 +1,20 @@
+{
+  "Eirika": {
+    "base": {
+      "class": "",
+      "average": {},
+      "weapon_ranks": {}
+    },
+    "promotion": {
+      "class1": {
+        "class": "",
+        "average": {},
+        "weapon_ranks": {},
+        "promotion": {}
+      }
+    },
+    "affinity": {},
+    "supports": [],
+    "growths": {}
+  }
+}
