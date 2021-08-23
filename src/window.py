@@ -8,7 +8,7 @@ import math
 
 CONTINUOUS_ARROWS = True
 BORDERS = False
-map_object = {'width': 22, 'height': 15}
+map_string = './test_files/test (1).txt'
 #Make config object for window
 # pyglet.options['search_local_libs'] = True
 source = resources.source
@@ -51,8 +51,8 @@ class Window(pyglet.window.Window):
         self.batch = pyglet.graphics.Batch()
         self.background = pyglet.graphics.OrderedGroup(0)
         self.foreground = pyglet.graphics.OrderedGroup(1)
-        #self.tiles = utils.test_generate_map_tiles(map['width'], map['height'], self.batch, self.background, self.screen_tile_width, self.screen_tile_height, utils.generate_test_list(map['width'], map['height']))
-        self.tiles=utils.generate_map_tiles(map['width'], map['height'], self.batch, self.background, self.screen_tile_width, self.screen_tile_height)
+        self.tiles = utils.test_generate_map_tiles(map, self.batch, self.background, self.screen_tile_width, self.screen_tile_height)
+        #self.tiles=utils.generate_map_tiles(map['width'], map['height'], self.batch, self.background, self.screen_tile_width, self.screen_tile_height)
 
         # Represents position of cursor; in some cases, represents original position of unit
         self.current_x= 0
@@ -72,8 +72,8 @@ class Window(pyglet.window.Window):
         self.test_character2 = Character(resources.player_image, self.batch, self.foreground, 1)
         self.test_character3 = Character(resources.player_image, self.batch, self.foreground, 1)
         self.tiles[self.current_x][self.current_y].set_character(self.test_character)
-        self.tiles[5][4].set_character(self.test_character2)
-        self.tiles[0][4].set_character(self.test_character3)
+        # self.tiles[5][4].set_character(self.test_character2)
+        # self.tiles[0][4].set_character(self.test_character3)
         
         # Used for when a character is selecting attacks
         self.attack_view = None
@@ -548,7 +548,7 @@ class Window(pyglet.window.Window):
             self.tiles[self.current_y][self.current_x].change_tint(utils.GREEN_TINT)
 
 if __name__ == '__main__':
-    window = Window(map_object)
+    window = Window(map_string)
     if CONTINUOUS_ARROWS:
         window.push_handlers(window.key_handler)
         pyglet.clock.schedule_interval(window.check_arrow_keys, 1/10)

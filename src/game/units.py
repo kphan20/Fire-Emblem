@@ -1,6 +1,6 @@
 import pyglet
 from dataclasses import dataclass
-from utils import stat_names
+from scraper.utils import stat_names
 import random
 
 class WeaponClass:
