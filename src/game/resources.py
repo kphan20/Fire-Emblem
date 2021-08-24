@@ -9,6 +9,10 @@ pyglet.resource.reindex()
 # Retrieves base images from folder
 images = listdir('../resources/characters')
 tilesets = listdir('../resources/terrain')
+menu_items = listdir('../resources/menu')
+
+# Stores resources related to the menus
+circle_animation = pyglet.resource.animation('menu/spinningcircle.gif')
 
 # Current player placeholder image
 player_image = pyglet.resource.image('characters/' + images[0])
