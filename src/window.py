@@ -8,21 +8,31 @@ import math
 
 CONTINUOUS_ARROWS = True
 BORDERS = False
+STARTING_MENU = True
 map_string = './test_files/test (1).txt'
 #Make config object for window
 # pyglet.options['search_local_libs'] = True
 source = resources.source
 source.play()
 
+# Helper classes to represent game screens
 class StartingScreen(pyglet.sprite.Sprite):
     def __init__(self, img):
         super().__init__(img=img)
+        
 class StartingMenu(pyglet.sprite.Sprite):
-    def __init__(self):
-        super().__init__(img=resources.animation)
+    def __init__(self, img, width, height):
+        for frame in img.frames:
+            frame.image.width = width
+            frame.image.height = height
+        super().__init__(img=img)
 
 def four_direction_decorator(func):
-    """Convenience decorator for algorithms requiring searching in four directions"""
+    """Convenience decorator for algorithms requiring searching in four directions
+
+    Args:
+        func (function): Recursive function to be executed
+    """
     def wrapper(x, y, *args, **kwargs):
         returned_values = [
         func(x + 1, y, *args, **kwargs),
@@ -38,14 +48,13 @@ class Window(pyglet.window.Window):
         # Used to resize starting screen image
         starting_image = resources.starting_screen
         starting_image.width, starting_image.height = self.get_size()
-        
         # screen width and height in terms of complete tiles
         self.screen_tile_width = starting_image.width // (utils.TILE_SCALE * utils.TILE_SIZE)
         self.screen_tile_height = starting_image.height // (utils.TILE_SCALE * utils.TILE_SIZE)
         if BORDERS:
             tile_size = utils.TILE_SIZE * utils.TILE_SCALE
             self.set_fullscreen(width=self.screen_tile_width * tile_size, height=self.screen_tile_height * tile_size)
-        self.current_screen = None# StartingScreen(img=starting_image)
+        self.current_screen = StartingScreen(img=starting_image) if STARTING_MENU else None
         
         # Batch all sprites that need to be drawn
         self.batch = pyglet.graphics.Batch()
@@ -89,6 +98,7 @@ class Window(pyglet.window.Window):
         self.selected_y = 0
         
         self.key_handler = key.KeyStateHandler()
+        
     def generate_empty_array(self):
         """Generates empty 2D array for movement/attack range calculations
 
@@ -394,7 +404,7 @@ class Window(pyglet.window.Window):
         if self.current_screen:
             if symbol==key.E:
                 if isinstance(self.current_screen, StartingScreen):
-                    self.current_screen=StartingMenu()
+                    self.current_screen=StartingMenu(resources.circle_animation, self.current_screen.width, self.current_screen.height)
                     return
                 if isinstance(self.current_screen, StartingMenu):
                     self.current_screen=None#Tile(img=resources.tile, x=100,y=100, batch=self.batch)#TileScreen(self.batch)
