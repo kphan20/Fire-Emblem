@@ -287,7 +287,7 @@ def create_character_data():
     handle_recruit_promotions(results, classes)
     with open(os.path.join(dirname, '../test_files/test.json'), 'w') as f:
         json.dump(results, f)
-#reate_character_data()
+create_character_data()
 
 # For items
 def get_inventory_links(url):

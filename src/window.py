@@ -6,9 +6,15 @@ from game.units import *
 import utils
 import math
 
+#TO DO
+# Currently, the arrow movement key handler does not recognize bounds for tile selector sprite
+# - Need to incorporate actual map bounds in bounds calculation
+# The arrow images' scales are all broken
+
+
 CONTINUOUS_ARROWS = True
 BORDERS = False
-STARTING_MENU = True
+STARTING_MENU = False
 map_string = './test_files/test (1).txt'
 #Make config object for window
 # pyglet.options['search_local_libs'] = True
@@ -17,7 +23,10 @@ source.play()
 
 # Helper classes to represent game screens
 class StartingScreen(pyglet.sprite.Sprite):
-    def __init__(self, img):
+    def __init__(self, img, width, height):
+        # for frame in img.frames:
+        #     frame.image.width = width
+        #     frame.image.height = height
         super().__init__(img=img)
         
 class StartingMenu(pyglet.sprite.Sprite):
@@ -31,9 +40,10 @@ def four_direction_decorator(func):
     """Convenience decorator for algorithms requiring searching in four directions
 
     Args:
-        func (function): Recursive function to be executed
+        func (function): Function to be executed four times
     """
     def wrapper(x, y, *args, **kwargs):
+        # One function in path_finder requires the returned values
         returned_values = [
         func(x + 1, y, *args, **kwargs),
         func(x - 1, y, *args, **kwargs),
@@ -54,7 +64,7 @@ class Window(pyglet.window.Window):
         if BORDERS:
             tile_size = utils.TILE_SIZE * utils.TILE_SCALE
             self.set_fullscreen(width=self.screen_tile_width * tile_size, height=self.screen_tile_height * tile_size)
-        self.current_screen = StartingScreen(img=starting_image) if STARTING_MENU else None
+        self.current_screen = StartingScreen(starting_image, *self.get_size()) if STARTING_MENU else None
         
         # Batch all sprites that need to be drawn
         self.batch = pyglet.graphics.Batch()
@@ -81,8 +91,8 @@ class Window(pyglet.window.Window):
         self.test_character2 = Character(resources.player_image, self.batch, self.foreground, 1)
         self.test_character3 = Character(resources.player_image, self.batch, self.foreground, 1)
         self.tiles[self.current_x][self.current_y].set_character(self.test_character)
-        # self.tiles[5][4].set_character(self.test_character2)
-        # self.tiles[0][4].set_character(self.test_character3)
+        self.tiles[5][4].set_character(self.test_character2)
+        self.tiles[0][4].set_character(self.test_character3)
         
         # Used for when a character is selecting attacks
         self.attack_view = None
@@ -96,7 +106,11 @@ class Window(pyglet.window.Window):
         # Used for move/attack selection
         self.selected_x = 0
         self.selected_y = 0
-        
+        # tile_selection = resources.tile_selector_animation
+        # for frame in tile_selection.frames:
+        #     frame.utils.TILE_SIZE * utils.TILE_SCALE / frame.width
+        self.tile_selector = pyglet.sprite.Sprite(img=resources.tile_selector_animation, batch=self.batch, group=self.foreground)
+        self.tile_selector.scale = utils.TILE_SCALE * utils.TILE_SIZE / utils.SELECTOR_SIZE
         self.key_handler = key.KeyStateHandler()
         
     def generate_empty_array(self):
@@ -116,6 +130,7 @@ class Window(pyglet.window.Window):
         for y in range(len(self.tiles)):
             for x in range(len(self.tiles[0])):
                 self.tiles[y][x].change_tint(utils.NORMAL_TINT)
+                self.tiles[y][x].arrow = None
                 
     def remove_tiles_from_batch(self, tile_arr):
         """Removes tiles from batch as camera moves
@@ -200,7 +215,7 @@ class Window(pyglet.window.Window):
             if current_x < 0 or current_x >= len(filler[0]) or current_y < 0 or current_y >= len(filler):
                 return
             # Prevents unit from moving past another unit on a different team
-            if tile_arr[current_y][current_x].character and tile_arr[current_y][current_x].character.team != tile_arr[self.selected_y][self.selected_x].character.team:
+            if tile_arr[current_y][current_x].character and tile_arr[current_y][current_x].character.team != self.selected_unit.team:#tile_arr[self.selected_y][self.selected_x].character.team:
                 max_move = 0
             else:
                 # If no unit or same team unit, then calculate move normally
@@ -281,24 +296,92 @@ class Window(pyglet.window.Window):
                       1: lambda x, y: (x - 1, y),
                       2: lambda x, y: (x, y + 1),
                       3: lambda x, y: (x, y - 1)}
+        path_resources = resources.path_arrows_dict
+        arrow_dict = {
+            (0, 0): "straightHorizontal",
+            (0, 2): "elbowLeftUp",
+            (0, 3): "elbowLeftDown",
+            (1, 1): "straightHorizontal",
+            (1, 2): "elbowRightUp",
+            (1, 3): "elbowRightDown",
+            (2, 0): "elbowRightDown",
+            (2, 1): "elbowLeftDown",
+            (2, 2): "straightVertical",
+            (3, 0): "elbowRightUp",
+            (3, 1): "elbowLeftUp",
+            (3, 3): "straightVertical"
+        }
+        arrow_head_list = [
+            'arrowLeft',
+            'arrowRight',
+            'arrowDown',
+            'arrowUp',
+        ]
+        arrow_image_config = {
+            "straightHorizontal": (80, 40, 40, 20),
+            "straightVertical": (40, 80, 20, 40),
+            "elbowLeftUp": (60, 60, 40, 20),
+            "elbowLeftDown": (60, 60, 40, 40),
+            "elbowRightUp": (60, 60, 20, 20),
+            "elbowRightDown": (60, 60, 20, 40),
+        }
         @four_direction_decorator
         def check(x_coor, y_coor):
             if x_coor < 0 or x_coor > len(filler[0]) - 1 or y_coor < 0 or y_coor > len(filler) - 1:
                 return -1
             return filler[y_coor][x_coor]
+        
         if filler[destination_y][destination_x] > 0:
             # Starts from destination and backtracks by following the path with the greatest values
             x_coordinate, y_coordinate = destination_x, destination_y
             path = []
-            path.append((x_coordinate, y_coordinate))
+            #`path.append((x_coordinate, y_coordinate))
+            previous_change = None
+            print('start')
             while x_coordinate != self.selected_x or y_coordinate != self.selected_y:
                 # Checks right, left, up, and down tiles for their values
                 tile_values = check(x_coordinate, y_coordinate)
                 # Retrieves largest value and retrieves its tile coordinates
-                new_coordinates = coord_dict[tile_values.index(max(tile_values))](x_coordinate, y_coordinate)
-                path.append(new_coordinates[:])
+                next_index = tile_values.index(max(tile_values))
+                new_coordinates = coord_dict[next_index](x_coordinate, y_coordinate)
+                if previous_change or previous_change == 0:
+                    test_string = arrow_dict[(previous_change, next_index)]
+                    print(previous_change, next_index)
+                    arrow_image = path_resources[arrow_dict[(previous_change, next_index)]]
+                else:
+                    arrow_image = path_resources[arrow_head_list[next_index]]
+                print(previous_change)
+                #arrow_image.height = arrow_image.width = utils.TILE_SCALE * utils.TILE_SIZE
+                if previous_change or previous_change == 0:
+                    arrow_image.width, arrow_image.height, arrow_image.anchor_x, arrow_image.anchor_y = arrow_image_config[arrow_dict[(previous_change, next_index)]]
+                    print(arrow_image_config[arrow_dict[(previous_change, next_index)]])
+                else:
+                    arrow_image.width = utils.TILE_SCALE * utils.TILE_SIZE
+                    arrow_image.height = 30
+                    arrow_image.anchor_x = arrow_image.width // 2
+                    arrow_image.anchor_y = arrow_image.height // 2 + 5
+                arrow = pyglet.sprite.Sprite(arrow_image, batch=self.batch, group=self.foreground)
+                path.append((x_coordinate, y_coordinate, arrow))
                 x_coordinate, y_coordinate = new_coordinates
+                previous_change = next_index
+                print(path[-1])
+            if previous_change:
+                if next_index == 0:
+                    arrow_image = path_resources['rootLeft']
+                elif next_index == 1:
+                    arrow_image = path_resources['rootRight']
+                elif next_index == 2:
+                    arrow_image = path_resources['rootDown']
+                else:
+                    arrow_image = path_resources['rootUp']
+                arrow_image.anchor_x = arrow_image.width // 2
+                arrow_image.anchor_y = arrow_image.height // 2
+                arrow = pyglet.sprite.Sprite(arrow_image)
+                path.append((x_coordinate, y_coordinate, arrow))
+            else:
+                path.append((x_coordinate, y_coordinate, pyglet.sprite.Sprite(path_resources['rootUp'])))
             path.reverse()
+            print(path)
             return path
         return "outside of range"
     
@@ -310,6 +393,8 @@ class Window(pyglet.window.Window):
         """
         for point in path:
             self.tiles[point[1]][point[0]].change_tint(utils.GREEN_TINT)
+            if point[2]:
+                self.tiles[point[1]][point[0]].set_arrow(point[2])
             
     def path_testing(self):
         self.reset_tiles()
@@ -327,9 +412,10 @@ class Window(pyglet.window.Window):
         self.available_enemies = []
 
     def testing(self):
-        print ('Step')
-        print(self.current_x, self.current_y)
-        print(self.starting_x, self.starting_y)
+        pass
+        # print ('Step')
+        # print(self.current_x, self.current_y)
+        # print(self.starting_x, self.starting_y)
         
     def shift_tiles(self):
         """Redraws tiles after camera pan"""
@@ -459,6 +545,7 @@ class Window(pyglet.window.Window):
                     self.tiles[self.current_y][self.current_x].character = None
                     self.current_x, self.current_y = self.selected_x, self.selected_y
                     self.tiles[self.selected_y][self.selected_x].set_character(self.selected_unit)
+                    self.tile_selector.x, self.tile_selector.y = self.selected_x * utils.TILE_SCALE * utils.TILE_SIZE, self.selected_y * utils.TILE_SCALE * utils.TILE_SIZE
                     self.selected_x = None
                     self.selected_y = None
                     self.reset_unit()
@@ -516,6 +603,13 @@ class Window(pyglet.window.Window):
         else:
             self.batch.draw()
         #self.test.draw()
+    
+    def tile_selector_bounds(self, max, change):
+        if change > max:
+            return max
+        if change < 0:
+            return 0
+        return change
     def check_arrow_keys(self, _):
         options = [key.RIGHT, key.LEFT, key.UP, key.DOWN]
         arrow_key_dict = {key.RIGHT: lambda x, y: (x + 1, y),
@@ -534,25 +628,31 @@ class Window(pyglet.window.Window):
         # else:
         #     self.tiles[self.current_y][self.current_x].change_tint(self.previous_color)
         current_tile = self.tiles[self.current_y][self.current_x]
-        self.current_x += change_x
-        self.current_y += change_y
-        for option in options:
-            if self.key_handler[option]:
-                self.camera_bounds(option)
-        self.current_x = self.bounds(self.tiles[0], self.current_x)
-        self.current_y = self.bounds(self.tiles, self.current_y)
-        if self.selected_unit:
-            if self.previous_color:
-               current_tile.change_tint(self.previous_color)
-            if self.current_moves[self.current_y][self.current_x] > 0:
-                self.previous_color = None
-                self.path_testing()
+        if change_x != 0 or change_y != 0:
+            tile_size = utils.TILE_SCALE * utils.TILE_SIZE
+            self.tile_selector.x += change_x * tile_size
+            self.tile_selector.x = self.tile_selector_bounds(self.screen_tile_width * tile_size, self.tile_selector.x)
+            self.tile_selector.y += change_y * tile_size
+            self.tile_selector.y = self.tile_selector_bounds(self.screen_tile_height * tile_size, self.tile_selector.y)
+            self.current_x += change_x
+            self.current_y += change_y
+            for option in options:
+                if self.key_handler[option]:
+                    self.camera_bounds(option)
+            self.current_x = self.bounds(self.tiles[0], self.current_x)
+            self.current_y = self.bounds(self.tiles, self.current_y)
+            if self.selected_unit:
+                if self.previous_color:
+                    current_tile.change_tint(self.previous_color)
+                if self.current_moves[self.current_y][self.current_x] > 0:
+                    self.previous_color = None
+                    self.path_testing()
+                else:
+                    current_tile = self.tiles[self.current_y][self.current_x]
+                    self.previous_color = current_tile.color
+                    current_tile.change_tint(utils.GREEN_TINT)
             else:
-                current_tile = self.tiles[self.current_y][self.current_x]
-                self.previous_color = current_tile.color
-                current_tile.change_tint(utils.GREEN_TINT)
-        else:
-            current_tile.change_tint(utils.NORMAL_TINT)
+                current_tile.change_tint(utils.NORMAL_TINT)
 
         #self.reset_tiles()
             self.tiles[self.current_y][self.current_x].change_tint(utils.GREEN_TINT)
