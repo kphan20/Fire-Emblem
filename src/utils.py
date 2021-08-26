@@ -9,6 +9,8 @@ dirname = os.path.dirname(__file__)
 TILE_SIZE = 16
 TILE_SCALE = 5
 
+SELECTOR_SIZE = 24
+
 BLUE_TINT=(10, 100, 255)
 RED_TINT=(255, 0, 50)
 GREEN_TINT=(0, 255, 255)
@@ -21,25 +23,51 @@ map_dimensions = {'width': 22, 'height': 15}
 
 class Tile(pyglet.sprite.Sprite):
     def __init__(self, img, x, y, batch, group, tile_type):
+        # The sprite is currently still anchored in its bottom left corner
         super().__init__(img=img, x=x, y=y, batch=batch, group=group)
         self.scale= TILE_SCALE
         self.tile_type = tile_type
         self.character = None
         self.arrow = None
+        
     def change_tint(self, color):
+        """Changes RGB of tile sprite
+
+        Args:
+            color (tuple[int]): Tuple representing new RGB values
+        """
         self.color = color
+        
     def set_character(self, character):
+        """Adds character to tile and positions them correctly
+
+        Args:
+            character (Character): Character class object
+        """
         self.character = character
         self.character.position = (self.x, self.y)
+        
+    def set_arrow(self, arrow):
+        self.arrow = arrow
+        self.arrow.position = (self.x + self.width // 2, self.y + self.height // 2)
+        
     def shift_tile(self, shift_x, shift_y):
+        """Shifts the tile position to new x and y
+
+        Args:
+            shift_x (int): New x coordinate
+            shift_y (int): New y coordinate
+        """
         new_position = (shift_x, shift_y)
         self.position = new_position
         character = self.character
         if character:
             character.position = new_position
+            
     def draw(self):
         super().draw()
         self.character.draw()
+        
 def generate_map_tiles(map_width, map_height, batch, group, screen_tile_width, screen_tile_height):
     map_arr = []
     # Change for debug purposes
@@ -96,7 +124,14 @@ def test_generate_map_tiles(map, batch, group, screen_tile_width, screen_tile_he
     Returns:
         list[Tile]: List with all the map tiles
     """
-    update_map_info(os.path.join(dirname, map))
+    #update_map_info(os.path.join(dirname, map))
+    
+    # Testing code
+    map_dimensions['height'] = 11
+    map_dimensions['width'] = 20
+    map_list = generate_test_list(20, 11)
+    
+    map_list = [291 for x in range(11 * 20)]
     map_arr = []
     # Change for debug purposes
     offset_x = 0
@@ -115,6 +150,11 @@ def test_generate_map_tiles(map, batch, group, screen_tile_width, screen_tile_he
         offset_x = 0
         offset_y += TILE_SIZE * TILE_SCALE
         map_arr.append(row)
+        
+    # Testing code
+    map_arr[5][5].tile_type = 1
+    map_arr[3][4].tile_type = 1
+    map_arr[4][3].tile_type = 1
     return map_arr
 
 def generate_teams(units):
