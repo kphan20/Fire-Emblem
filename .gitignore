@@ -6,3 +6,4 @@ src\intro.py
 test_files
 intro.py
 *.xcf
+src\database
