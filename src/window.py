@@ -77,7 +77,7 @@ class Window(pyglet.window.Window):
         self.current_x= 0
         self.current_y = 0
         
-        self.previous_color = None
+        #self.previous_color = None
         # These will hold the coordinates of the bottom left corner of the screen
         # Will be used for camera movement calculations
         self.starting_x = self.current_x
@@ -325,6 +325,12 @@ class Window(pyglet.window.Window):
             "elbowRightUp": (60, 60, 20, 20),
             "elbowRightDown": (60, 60, 20, 40),
         }
+        arrow_head_config = {
+            'arrowLeft': (40, 80, 0, 40),
+            'arrowRight': (40, 80, 40, 40),
+            'arrowDown': (80, 40, 40, 0),
+            'arrowUp': (80, 40, 40, 40)
+        }
         @four_direction_decorator
         def check(x_coor, y_coor):
             if x_coor < 0 or x_coor > len(filler[0]) - 1 or y_coor < 0 or y_coor > len(filler) - 1:
@@ -356,27 +362,43 @@ class Window(pyglet.window.Window):
                     arrow_image.width, arrow_image.height, arrow_image.anchor_x, arrow_image.anchor_y = arrow_image_config[arrow_dict[(previous_change, next_index)]]
                     print(arrow_image_config[arrow_dict[(previous_change, next_index)]])
                 else:
-                    arrow_image.width = utils.TILE_SCALE * utils.TILE_SIZE
-                    arrow_image.height = 30
-                    arrow_image.anchor_x = arrow_image.width // 2
-                    arrow_image.anchor_y = arrow_image.height // 2 + 5
+                    # arrow_image.width = utils.TILE_SCALE * utils.TILE_SIZE
+                    # arrow_image.height = 30
+                    # arrow_image.anchor_x = arrow_image.width // 2
+                    # arrow_image.anchor_y = arrow_image.height // 2 + 5
+                    arrow_image.width, arrow_image.height, arrow_image.anchor_x, arrow_image.anchor_y = arrow_head_config[arrow_head_list[next_index]]
                 arrow = pyglet.sprite.Sprite(arrow_image, batch=self.batch, group=self.foreground)
                 path.append((x_coordinate, y_coordinate, arrow))
                 x_coordinate, y_coordinate = new_coordinates
                 previous_change = next_index
+                print(previous_change)
                 print(path[-1])
-            if previous_change:
+            if previous_change or previous_change == 0:
+                print('check')
+                rootConfig = {
+                    'rootLeft': (40, 20),
+                    'rootRight': (0, 20),
+                    'rootUp': (20, 0),
+                    'rootDown': (20, 40)
+                }
                 if next_index == 0:
+                    string = 'rootLeft'
                     arrow_image = path_resources['rootLeft']
                 elif next_index == 1:
+                    string = 'rootRight'
                     arrow_image = path_resources['rootRight']
                 elif next_index == 2:
+                    string = 'rootDown'
                     arrow_image = path_resources['rootDown']
                 else:
+                    string = 'rootUp'
                     arrow_image = path_resources['rootUp']
-                arrow_image.anchor_x = arrow_image.width // 2
-                arrow_image.anchor_y = arrow_image.height // 2
-                arrow = pyglet.sprite.Sprite(arrow_image)
+                arrow_image.width, arrow_image.height = (40, 40)
+                arrow_image.anchor_x, arrow_image.anchor_y = rootConfig[string]
+                print(string)
+                # arrow_image.anchor_x = 0#arrow_image.width // 2
+                # arrow_image.anchor_y = arrow_image.height // 2
+                arrow = pyglet.sprite.Sprite(arrow_image, batch=self.batch, group=self.foreground)
                 path.append((x_coordinate, y_coordinate, arrow))
             else:
                 path.append((x_coordinate, y_coordinate, pyglet.sprite.Sprite(path_resources['rootUp'])))
@@ -392,7 +414,7 @@ class Window(pyglet.window.Window):
             path (list): List containing path coordinates
         """
         for point in path:
-            self.tiles[point[1]][point[0]].change_tint(utils.GREEN_TINT)
+            #self.tiles[point[1]][point[0]].change_tint(utils.GREEN_TINT)
             if point[2]:
                 self.tiles[point[1]][point[0]].set_arrow(point[2])
             
@@ -535,7 +557,7 @@ class Window(pyglet.window.Window):
                         self.find_enemies_in_range(self.attack_view)
                         if self.available_enemies:
                             enemy_x, enemy_y = self.available_enemies[0]
-                            self.tiles[enemy_y][enemy_x].change_tint(utils.GREEN_TINT)
+                            #self.tiles[enemy_y][enemy_x].change_tint(utils.GREEN_TINT)
                         return
                 return
             if symbol == key.Q:
@@ -550,7 +572,7 @@ class Window(pyglet.window.Window):
                     self.selected_y = None
                     self.reset_unit()
                 self.reset_tiles()
-                self.tiles[self.current_y][self.current_x].change_tint(utils.GREEN_TINT)
+                #self.tiles[self.current_y][self.current_x].change_tint(utils.GREEN_TINT)
                 return
             if arrow_key_dict.get(symbol):
                 if self.selected_unit:
@@ -566,21 +588,21 @@ class Window(pyglet.window.Window):
                             elif self.selected_enemy == -(length_check + 1):
                                 self.selected_enemy = length_check - 1
                             enemy_x, enemy_y = self.available_enemies[self.selected_enemy]
-                            self.tiles[enemy_y][enemy_x].change_tint(utils.GREEN_TINT)
+                            #self.tiles[enemy_y][enemy_x].change_tint(utils.GREEN_TINT)
                         return # could use else instead; prevents path finding behavior when attacking enemy
                     #self.selected_x, self.selected_y = arrow_key_dict[symbol](self.selected_x, self.selected_y) # change this to current
                     if not CONTINUOUS_ARROWS:
-                        if self.previous_color:
-                            self.tiles[self.current_y][self.current_x].change_tint(self.previous_color)
+                        # if self.previous_color:
+                        #     self.tiles[self.current_y][self.current_x].change_tint(self.previous_color)
                         if not CONTINUOUS_ARROWS:
                             self.current_x, self.current_y = arrow_key_dict[symbol](self.current_x, self.current_y)
                         if self.current_moves[self.current_y][self.current_x] > 0:
-                            self.previous_color = None
+                            #self.previous_color = None
                             self.path_testing() # going to have to implement different logic to check for bounds of camera
-                        else:
-                            current_tile = self.tiles[self.current_y][self.current_x]
-                            self.previous_color = current_tile.color
-                            current_tile.change_tint(utils.GREEN_TINT)
+                        # else:
+                        #     current_tile = self.tiles[self.current_y][self.current_x]
+                        #     self.previous_color = current_tile.color
+                        #     current_tile.change_tint(utils.GREEN_TINT)
                 else:
                     self.reset_tiles()
                     if not CONTINUOUS_ARROWS:
@@ -588,7 +610,7 @@ class Window(pyglet.window.Window):
                 self.camera_bounds(symbol)
                 self.current_y = self.bounds(self.tiles, self.current_y)
                 self.current_x = self.bounds(self.tiles[self.current_y], self.current_x)
-                self.tiles[self.current_y][self.current_x].change_tint(utils.GREEN_TINT)
+                #self.tiles[self.current_y][self.current_x].change_tint(utils.GREEN_TINT)
                 return
     def draw_range(self, character):
         moves = self.move_finder(self.selected_x, self.selected_y, 8, 1)
@@ -642,20 +664,20 @@ class Window(pyglet.window.Window):
             self.current_x = self.bounds(self.tiles[0], self.current_x)
             self.current_y = self.bounds(self.tiles, self.current_y)
             if self.selected_unit:
-                if self.previous_color:
-                    current_tile.change_tint(self.previous_color)
+                # if self.previous_color:
+                #     current_tile.change_tint(self.previous_color)
                 if self.current_moves[self.current_y][self.current_x] > 0:
-                    self.previous_color = None
+                    #self.previous_color = None
                     self.path_testing()
-                else:
-                    current_tile = self.tiles[self.current_y][self.current_x]
-                    self.previous_color = current_tile.color
-                    current_tile.change_tint(utils.GREEN_TINT)
+                # else:
+                #     current_tile = self.tiles[self.current_y][self.current_x]
+                #     self.previous_color = current_tile.color
+                #     current_tile.change_tint(utils.GREEN_TINT)
             else:
                 current_tile.change_tint(utils.NORMAL_TINT)
 
         #self.reset_tiles()
-            self.tiles[self.current_y][self.current_x].change_tint(utils.GREEN_TINT)
+            # self.tiles[self.current_y][self.current_x].change_tint(utils.GREEN_TINT)
 
 if __name__ == '__main__':
     window = Window(map_string)
