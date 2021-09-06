@@ -9,6 +9,8 @@ dirname = os.path.dirname(__file__)
 TILE_SIZE = 16
 TILE_SCALE = 5
 
+CAMERA_EDGE = 2
+
 SELECTOR_SIZE = 24
 
 BLUE_TINT=(10, 100, 255)
@@ -60,9 +62,10 @@ class Tile(pyglet.sprite.Sprite):
         """
         new_position = (shift_x, shift_y)
         self.position = new_position
-        character = self.character
-        if character:
-            character.position = new_position
+        if self.character:
+            self.character.position = new_position
+        if self.arrow:
+            self.arrow.position = (shift_x + 0.5 * TILE_SIZE * TILE_SCALE, shift_y + 0.5 * TILE_SIZE * TILE_SCALE)
             
     def draw(self):
         super().draw()
@@ -127,11 +130,11 @@ def test_generate_map_tiles(map, batch, group, screen_tile_width, screen_tile_he
     #update_map_info(os.path.join(dirname, map))
     
     # Testing code
-    map_dimensions['height'] = 11
-    map_dimensions['width'] = 20
-    map_list = generate_test_list(20, 11)
+    map_dimensions['height'] = 15
+    map_dimensions['width'] = 100
+    map_list = generate_test_list(25, 15)
     
-    map_list = [291 for x in range(11 * 20)]
+    map_list = [291 for x in range(map_dimensions['width'] * map_dimensions['height'])]
     map_arr = []
     # Change for debug purposes
     offset_x = 0

@@ -9,7 +9,11 @@ import math
 #TO DO
 # Currently, the arrow movement key handler does not recognize bounds for tile selector sprite
 # - Need to incorporate actual map bounds in bounds calculation
-# The arrow images' scales are all broken
+# Fix several bugs
+# - Sometimes, the tile selection coordinates are completely off
+# - Tile coloring not working for certain frames
+# - the above problems could be linked
+
 
 
 CONTINUOUS_ARROWS = True
@@ -70,6 +74,7 @@ class Window(pyglet.window.Window):
         self.batch = pyglet.graphics.Batch()
         self.background = pyglet.graphics.OrderedGroup(0)
         self.foreground = pyglet.graphics.OrderedGroup(1)
+        self.selector = pyglet.graphics.OrderedGroup(2)
         self.tiles = utils.test_generate_map_tiles(map, self.batch, self.background, self.screen_tile_width, self.screen_tile_height)
         #self.tiles=utils.generate_map_tiles(map['width'], map['height'], self.batch, self.background, self.screen_tile_width, self.screen_tile_height)
 
@@ -109,7 +114,7 @@ class Window(pyglet.window.Window):
         # tile_selection = resources.tile_selector_animation
         # for frame in tile_selection.frames:
         #     frame.utils.TILE_SIZE * utils.TILE_SCALE / frame.width
-        self.tile_selector = pyglet.sprite.Sprite(img=resources.tile_selector_animation, batch=self.batch, group=self.foreground)
+        self.tile_selector = pyglet.sprite.Sprite(img=resources.tile_selector_animation, batch=self.batch, group=self.selector)
         self.tile_selector.scale = utils.TILE_SCALE * utils.TILE_SIZE / utils.SELECTOR_SIZE
         self.key_handler = key.KeyStateHandler()
         
@@ -324,8 +329,6 @@ class Window(pyglet.window.Window):
             "elbowLeftDown": (60, 60, 40, 40),
             "elbowRightUp": (60, 60, 20, 20),
             "elbowRightDown": (60, 60, 20, 40),
-        }
-        arrow_head_config = {
             'arrowLeft': (40, 80, 0, 40),
             'arrowRight': (40, 80, 40, 40),
             'arrowDown': (80, 40, 40, 0),
@@ -351,22 +354,13 @@ class Window(pyglet.window.Window):
                 next_index = tile_values.index(max(tile_values))
                 new_coordinates = coord_dict[next_index](x_coordinate, y_coordinate)
                 if previous_change or previous_change == 0:
-                    test_string = arrow_dict[(previous_change, next_index)]
-                    print(previous_change, next_index)
-                    arrow_image = path_resources[arrow_dict[(previous_change, next_index)]]
+                    arrow_string = arrow_dict[(previous_change, next_index)]
                 else:
-                    arrow_image = path_resources[arrow_head_list[next_index]]
+                    arrow_string = arrow_head_list[next_index]
                 print(previous_change)
                 #arrow_image.height = arrow_image.width = utils.TILE_SCALE * utils.TILE_SIZE
-                if previous_change or previous_change == 0:
-                    arrow_image.width, arrow_image.height, arrow_image.anchor_x, arrow_image.anchor_y = arrow_image_config[arrow_dict[(previous_change, next_index)]]
-                    print(arrow_image_config[arrow_dict[(previous_change, next_index)]])
-                else:
-                    # arrow_image.width = utils.TILE_SCALE * utils.TILE_SIZE
-                    # arrow_image.height = 30
-                    # arrow_image.anchor_x = arrow_image.width // 2
-                    # arrow_image.anchor_y = arrow_image.height // 2 + 5
-                    arrow_image.width, arrow_image.height, arrow_image.anchor_x, arrow_image.anchor_y = arrow_head_config[arrow_head_list[next_index]]
+                arrow_image = path_resources[arrow_string]
+                arrow_image.width, arrow_image.height, arrow_image.anchor_x, arrow_image.anchor_y = arrow_image_config[arrow_string]
                 arrow = pyglet.sprite.Sprite(arrow_image, batch=self.batch, group=self.foreground)
                 path.append((x_coordinate, y_coordinate, arrow))
                 x_coordinate, y_coordinate = new_coordinates
@@ -382,20 +376,16 @@ class Window(pyglet.window.Window):
                     'rootDown': (20, 40)
                 }
                 if next_index == 0:
-                    string = 'rootLeft'
-                    arrow_image = path_resources['rootLeft']
+                    arrow_string = 'rootLeft'
                 elif next_index == 1:
-                    string = 'rootRight'
-                    arrow_image = path_resources['rootRight']
+                    arrow_string = 'rootRight'
                 elif next_index == 2:
-                    string = 'rootDown'
-                    arrow_image = path_resources['rootDown']
+                    arrow_string = 'rootDown'
                 else:
-                    string = 'rootUp'
-                    arrow_image = path_resources['rootUp']
+                    arrow_string = 'rootUp'
+                arrow_image = path_resources[arrow_string]
                 arrow_image.width, arrow_image.height = (40, 40)
-                arrow_image.anchor_x, arrow_image.anchor_y = rootConfig[string]
-                print(string)
+                arrow_image.anchor_x, arrow_image.anchor_y = rootConfig[arrow_string]
                 # arrow_image.anchor_x = 0#arrow_image.width // 2
                 # arrow_image.anchor_y = arrow_image.height // 2
                 arrow = pyglet.sprite.Sprite(arrow_image, batch=self.batch, group=self.foreground)
@@ -459,8 +449,8 @@ class Window(pyglet.window.Window):
         camera_x_position = self.current_x - self.starting_x
         camera_y_position = self.current_y - self.starting_y
         if direction == key.LEFT:
-            left_edge_check = self.starting_x == 0
-            if not left_edge_check and camera_x_position <= 1:# or camera_y_position == 1 or camera_y_position == self.screen_tile_height:
+            # Checks if starting_x is not already at left edge of map and if the cursor is close enough to the edge to change camera position
+            if not self.starting_x == 0 and camera_x_position <= utils.CAMERA_EDGE:# or camera_y_position == 1 or camera_y_position == self.screen_tile_height:
                 #self.current_x -= 1
                 self.starting_x -= 1
                 # remove tiles that were previously on the edge of the screen
@@ -469,8 +459,8 @@ class Window(pyglet.window.Window):
                 self.add_tiles_to_batch([tiles[self.starting_x] for tiles in self.tiles])
                 self.shift_tiles()
         elif direction == key.RIGHT:
-            right_edge_check = self.current_x == len(self.tiles[0]) - 2
-            if not right_edge_check and camera_x_position >= self.screen_tile_width - 1:
+            # Checks if cursor is close enough to right edge of screen, but not at the right edge of map boundary
+            if not self.current_x == len(self.tiles[0]) - 2 and camera_x_position >= self.screen_tile_width - utils.CAMERA_EDGE:
                 #self.current_x += 1
                 edge_check = len(self.tiles[0]) - 1
                 if self.starting_x + self.screen_tile_width < edge_check:
@@ -482,8 +472,8 @@ class Window(pyglet.window.Window):
                     self.add_tiles_to_batch([tiles[self.starting_x + self.screen_tile_width] for tiles in self.tiles])
                     self.shift_tiles()
         elif direction == key.UP:
-            upper_edge_check = self.starting_y == len(self.tiles) - 2
-            if not upper_edge_check and camera_y_position >= self.screen_tile_height - 1:
+            # Checks if cursor is close enough to the top edge of screen, but not at the upper edge of map boundary
+            if not self.starting_y == len(self.tiles) - 2 and camera_y_position >= self.screen_tile_height - utils.CAMERA_EDGE:
                 #self.current_y += 1
                 edge_check = len(self.tiles) - 1
                 if self.starting_y + self.screen_tile_height < edge_check:
@@ -494,8 +484,8 @@ class Window(pyglet.window.Window):
                     self.add_tiles_to_batch([tile for tile in self.tiles[self.starting_y + self.screen_tile_height]])
                     self.shift_tiles()
         elif direction == key.DOWN:
-            bottom_edge_check = self.starting_y == 0
-            if not bottom_edge_check and camera_y_position <= 1:# or camera_y_position == 1 or camera_y_position == self.screen_tile_height:
+            # Checks if cursor is close enough to left edge of screen, but not at the left edge of map boundary
+            if not self.starting_y == 0 and camera_y_position <= utils.CAMERA_EDGE:# or camera_y_position == 1 or camera_y_position == self.screen_tile_height:
                 #self.current_y -= 1
                 self.starting_y -= 1
                 self.remove_tiles_from_batch([tile for tile in self.tiles[self.starting_y + self.screen_tile_height + 1]])
@@ -520,6 +510,7 @@ class Window(pyglet.window.Window):
             # Using E as the selection button
             if symbol==key.E:
                 # Handles selection outside of character focus
+                print(self.current_x, self.current_y)
                 if not self.selected_unit:
                     character = self.tiles[self.current_y][self.current_x].character
                     # If selecting a square with a character, show that characters movement range and focuses on that unit
@@ -651,18 +642,20 @@ class Window(pyglet.window.Window):
         #     self.tiles[self.current_y][self.current_x].change_tint(self.previous_color)
         current_tile = self.tiles[self.current_y][self.current_x]
         if change_x != 0 or change_y != 0:
-            tile_size = utils.TILE_SCALE * utils.TILE_SIZE
-            self.tile_selector.x += change_x * tile_size
-            self.tile_selector.x = self.tile_selector_bounds(self.screen_tile_width * tile_size, self.tile_selector.x)
-            self.tile_selector.y += change_y * tile_size
-            self.tile_selector.y = self.tile_selector_bounds(self.screen_tile_height * tile_size, self.tile_selector.y)
-            self.current_x += change_x
-            self.current_y += change_y
             for option in options:
                 if self.key_handler[option]:
                     self.camera_bounds(option)
+            tile_size = utils.TILE_SCALE * utils.TILE_SIZE
+            self.current_x += change_x
+            self.current_y += change_y
             self.current_x = self.bounds(self.tiles[0], self.current_x)
             self.current_y = self.bounds(self.tiles, self.current_y)
+            self.tile_selector.x = (self.current_x - self.starting_x) * tile_size
+            self.tile_selector.y = (self.current_y - self.starting_y) * tile_size
+            # self.tile_selector.x += change_x * tile_size
+            # self.tile_selector.x = self.tile_selector_bounds(self.screen_tile_width * tile_size, self.tile_selector.x)
+            # self.tile_selector.y += change_y * tile_size
+            # self.tile_selector.y = self.tile_selector_bounds(self.screen_tile_height * tile_size, self.tile_selector.y)
             if self.selected_unit:
                 # if self.previous_color:
                 #     current_tile.change_tint(self.previous_color)
