@@ -71,16 +71,16 @@ class Tile(pyglet.sprite.Sprite):
         super().draw()
         self.character.draw()
         
-def generate_map_tiles(map_width, map_height, batch, group, screen_tile_width, screen_tile_height):
+def generate_map_tiles(batch, group, screen_tile_width, screen_tile_height):
     map_arr = []
     # Change for debug purposes
     offset_x = 0
     offset_y = 0
     # screen_tile_width += 1
     # screen_tile_height += 1
-    for y in range(map_height):
+    for y in range(map_dimensions['height']):
         row = []
-        for x in range(map_width):
+        for x in range(map_dimensions['width']):
             if y <= screen_tile_height and x <= screen_tile_width:
                 row.append(Tile(resources.testing_grid, offset_x, offset_y, batch, group, 0))
             else:
@@ -92,7 +92,6 @@ def generate_map_tiles(map_width, map_height, batch, group, screen_tile_width, s
     map_arr[5][5].tile_type = 1
     map_arr[3][4].tile_type = 1
     map_arr[4][3].tile_type = 1
-    map_arr[5][5].img = resources.tile2
     return map_arr
 def generate_test_list(x, y):
     return [random.randint(0, 1023) for bruh in range(x * y)]
@@ -132,9 +131,9 @@ def test_generate_map_tiles(map, batch, group, screen_tile_width, screen_tile_he
     # Testing code
     map_dimensions['height'] = 15
     map_dimensions['width'] = 100
-    map_list = generate_test_list(25, 15)
+    map_list = generate_test_list(map_dimensions['height'], map_dimensions['width'])
     
-    map_list = [291 for x in range(map_dimensions['width'] * map_dimensions['height'])]
+    #map_list = [291 for x in range(map_dimensions['width'] * map_dimensions['height'])]
     map_arr = []
     # Change for debug purposes
     offset_x = 0
