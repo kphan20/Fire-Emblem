@@ -19,7 +19,7 @@ import math
 
 CONTINUOUS_ARROWS = True
 BORDERS = False
-STARTING_MENU = False
+STARTING_MENU = True
 map_string = './test_files/test (1).txt'
 #Make config object for window
 # pyglet.options['search_local_libs'] = True
@@ -40,6 +40,11 @@ class StartingMenu(pyglet.sprite.Sprite):
             frame.image.width = width
             frame.image.height = height
         super().__init__(img=img)
+    def on_key_press(self, symbol, modifier):
+        if symbol == key.E:
+            print('success')
+        if symbol == key.ESCAPE:
+            print('I wonder')
 
 class BattleMenu(pyglet.window.Window):
     def __init__():
@@ -522,8 +527,10 @@ class Window(pyglet.window.Window):
             if symbol==key.E:
                 if isinstance(self.current_screen, StartingScreen):
                     self.current_screen=StartingMenu(resources.circle_animation, self.current_screen.width, self.current_screen.height)
+                    self.push_handlers(self.current_screen.on_key_press)
                     return
                 if isinstance(self.current_screen, StartingMenu):
+                    self.pop_handlers()
                     self.current_screen=None#Tile(img=resources.tile, x=100,y=100, batch=self.batch)#TileScreen(self.batch)
         else:
             # Using E as the selection button
