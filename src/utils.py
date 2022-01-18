@@ -9,6 +9,8 @@ dirname = os.path.dirname(__file__)
 TILE_SIZE = 16
 TILE_SCALE = 5
 
+CAMERA_EDGE = 2
+
 SELECTOR_SIZE = 24
 
 BLUE_TINT=(10, 100, 255)
@@ -60,24 +62,25 @@ class Tile(pyglet.sprite.Sprite):
         """
         new_position = (shift_x, shift_y)
         self.position = new_position
-        character = self.character
-        if character:
-            character.position = new_position
+        if self.character:
+            self.character.position = new_position
+        if self.arrow:
+            self.arrow.position = (shift_x + 0.5 * TILE_SIZE * TILE_SCALE, shift_y + 0.5 * TILE_SIZE * TILE_SCALE)
             
     def draw(self):
         super().draw()
         self.character.draw()
         
-def generate_map_tiles(map_width, map_height, batch, group, screen_tile_width, screen_tile_height):
+def generate_map_tiles(batch, group, screen_tile_width, screen_tile_height):
     map_arr = []
     # Change for debug purposes
     offset_x = 0
     offset_y = 0
     # screen_tile_width += 1
     # screen_tile_height += 1
-    for y in range(map_height):
+    for y in range(map_dimensions['height']):
         row = []
-        for x in range(map_width):
+        for x in range(map_dimensions['width']):
             if y <= screen_tile_height and x <= screen_tile_width:
                 row.append(Tile(resources.testing_grid, offset_x, offset_y, batch, group, 0))
             else:
@@ -89,7 +92,6 @@ def generate_map_tiles(map_width, map_height, batch, group, screen_tile_width, s
     map_arr[5][5].tile_type = 1
     map_arr[3][4].tile_type = 1
     map_arr[4][3].tile_type = 1
-    map_arr[5][5].img = resources.tile2
     return map_arr
 def generate_test_list(x, y):
     return [random.randint(0, 1023) for bruh in range(x * y)]
@@ -127,11 +129,11 @@ def test_generate_map_tiles(map, batch, group, screen_tile_width, screen_tile_he
     #update_map_info(os.path.join(dirname, map))
     
     # Testing code
-    map_dimensions['height'] = 11
-    map_dimensions['width'] = 20
-    map_list = generate_test_list(20, 11)
+    map_dimensions['height'] = 15
+    map_dimensions['width'] = 100
+    map_list = generate_test_list(map_dimensions['height'], map_dimensions['width'])
     
-    map_list = [291 for x in range(11 * 20)]
+    #map_list = [291 for x in range(map_dimensions['width'] * map_dimensions['height'])]
     map_arr = []
     # Change for debug purposes
     offset_x = 0
