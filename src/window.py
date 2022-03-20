@@ -717,3 +717,4 @@ if __name__ == '__main__':
         pyglet.clock.schedule_interval(window.check_arrow_keys, 1/10)
     pyglet.app.run()
 
+
