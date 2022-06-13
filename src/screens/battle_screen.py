@@ -1,110 +1,10 @@
-import pyglet
-from pyglet.sprite import Sprite
+from pyglet.graphics import Batch, OrderedGroup
 from pyglet.window import key
+from pyglet.sprite import Sprite
+
 from game import resources
 from game.units import *
-
-
-class Screen(pyglet.event.EventDispatcher):
-    def __init__(self, background, width, height):
-        for frame in background.frames:
-            frame.image.width = width
-            frame.image.height = height
-        self.background_group = pyglet.graphics.OrderedGroup(0)
-        self.background = Sprite(background, group=self.background_group)
-
-    def initiate_starting_screen(self):
-        self.dispatch_event("on_starting_screen_init")
-
-    def initiate_starting_menu(self):
-        self.dispatch_event("on_starting_menu_init")
-
-    def initiate_battle_screen(cls):
-        cls.dispatch_event("on_battle_screen_init")
-
-    def draw(self):
-        self.background.draw()
-
-    def update(self):
-        pass
-
-
-# consider individualizing this for each screen
-# Screen.register_event_type('on_starting_screen_init')
-# Screen.register_event_type('on_starting_menu_init')
-
-
-class MenuItem:
-    def __init__(self, screen_width, screen_height, position, on_click, group):
-        img = resources.menu_option
-        img.anchor_x = img.width // 2
-        img.anchor_y = img.height // 2
-        self.background_sprite = pyglet.sprite.Sprite(
-            resources.menu_option, group=group
-        )
-        self.background_sprite.scale_x = 16
-        self.background_sprite.scale_y = 4
-        self.background_sprite.x = screen_width // 2
-        self.background_sprite.y = (
-            screen_height - position * self.background_sprite.height
-        )
-        self.on_click = on_click
-
-    def draw(self):
-        self.background_sprite.draw()
-
-
-class StartingScreen(Screen):
-    def __init__(self, width, height):
-        super().__init__(resources.starting_screen, width, height)
-        self.register_event_type("on_starting_menu_init")
-
-    def on_key_press(self, symbol, modifiers):
-        if symbol == key.E:
-            self.initiate_starting_menu()
-
-
-class StartingMenu(Screen):
-    def __init__(self, width, height):
-        self.foreground_group = pyglet.graphics.OrderedGroup(1)
-        super().__init__(resources.circle_animation, width, height)
-        self.options = [
-            MenuItem(
-                width,
-                height,
-                1,
-                lambda x: x.initiate_battle_screen(),
-                self.foreground_group,
-            ),
-            MenuItem(
-                width, height, 2, lambda x: print("option 1"), self.foreground_group
-            ),
-        ]
-        self.selected_option = 0
-
-        self.register_event_type("on_starting_screen_init")
-        self.register_event_type("on_battle_screen_init")
-
-    def on_key_press(self, symbol, modifiers):
-        # selects option
-        if symbol == key.E:
-            # implement change screen wrapper function
-            self.options[self.selected_option].on_click(self)
-            return
-        elif symbol == key.Q:
-            self.initiate_starting_screen()
-        # scrolls up
-        elif symbol == key.UP:
-            length = len(self.options)
-            self.selected_option = (self.selected_option - 1 + length) % length
-        # scrolls down
-        elif symbol == key.DOWN:
-            self.selected_option = (self.selected_option + 1) % len(self.options)
-
-    def draw(self):
-        super().draw()
-        for option in self.options:
-            option.draw()
+from .screen import Screen
 
 
 def four_direction_decorator(func):
@@ -199,10 +99,10 @@ class BattleScreen(Screen, key.KeyStateHandler):
         self.screen_tile_height = height // self.ADJUSTED_TILE_SIZE
 
         # sprite drawing batches and groups
-        self.batch = pyglet.graphics.Batch()
-        self.background = pyglet.graphics.OrderedGroup(0)
-        self.foreground = pyglet.graphics.OrderedGroup(1)
-        self.selector = pyglet.graphics.OrderedGroup(2)
+        self.batch = Batch()
+        self.background = OrderedGroup(0)
+        self.foreground = OrderedGroup(1)
+        self.selector = OrderedGroup(2)
 
         # coordinates of the cursor/selector
         self.current_x = 0
@@ -239,7 +139,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
         self.bot_left_starting_y = 0
 
         # creates tile selector sprite
-        self.tile_selector = pyglet.sprite.Sprite(
+        self.tile_selector = Sprite(
             resources.tile_selector_animation, batch=self.batch, group=self.selector
         )
         self.tile_selector.scale = self.ADJUSTED_TILE_SIZE / utils.SELECTOR_SIZE
@@ -517,7 +417,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
                     arrow_image.anchor_x,
                     arrow_image.anchor_y,
                 ) = arrow_image_config[arrow_string]
-                arrow = pyglet.sprite.Sprite(arrow_image, group=self.foreground)
+                arrow = Sprite(arrow_image, group=self.foreground)
                 if in_screen_bounds(x_coordinate, y_coordinate):
                     arrow.batch = self.batch
                 path.append((x_coordinate, y_coordinate, arrow))
@@ -536,7 +436,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
                 arrow_image = path_resources[arrow_string]
                 arrow_image.width, arrow_image.height = (40, 40)
                 arrow_image.anchor_x, arrow_image.anchor_y = rootConfig[arrow_string]
-                arrow = pyglet.sprite.Sprite(arrow_image, group=self.foreground)
+                arrow = Sprite(arrow_image, group=self.foreground)
                 if in_screen_bounds(x_coordinate, y_coordinate):
                     arrow.batch = self.batch
                 path.append((x_coordinate, y_coordinate, arrow))
@@ -545,7 +445,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
                     (
                         x_coordinate,
                         y_coordinate,
-                        pyglet.sprite.Sprite(path_resources["rootUp"]),
+                        Sprite(path_resources["rootUp"]),
                     )
                 )
             path.reverse()
