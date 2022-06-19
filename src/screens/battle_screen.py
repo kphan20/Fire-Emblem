@@ -397,8 +397,8 @@ class BattleScreen(Screen, key.KeyStateHandler):
             x_coordinate, y_coordinate = destination_x, destination_y
             path = []
             previous_change = None
-            print((destination_x, destination_y))
-            print(self.selected_x, self.selected_y)
+            # print((destination_x, destination_y))
+            # print(self.selected_x, self.selected_y)
             while x_coordinate != self.selected_x or y_coordinate != self.selected_y:
                 # Checks right, left, up, and down tiles for their values
                 tile_values = check(x_coordinate, y_coordinate)
@@ -440,7 +440,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
                 if in_screen_bounds(x_coordinate, y_coordinate):
                     arrow.batch = self.batch
                 path.append((x_coordinate, y_coordinate, arrow))
-            else:
+            elif destination_x != self.selected_x and destination_y != self.selected_y:
                 path.append(
                     (
                         x_coordinate,
