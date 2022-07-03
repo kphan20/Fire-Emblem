@@ -3,8 +3,9 @@ from pyglet.window import key
 from pyglet.sprite import Sprite
 
 from game import resources
-from game.units import *
-from .screen import Screen
+from game.unit import *
+from game.unit_info import SupportBonuses, get_affinity_bonus
+from screen import Screen
 
 
 def four_direction_decorator(func):
@@ -709,6 +710,24 @@ class BattleScreen(Screen, key.KeyStateHandler):
             # removes markings from tiles
             self.reset_tiles()
             return
+
+    def update_supports_for_unit(self, unit: Character, unit_x, unit_y):
+        aff = unit.affinity
+        supports = unit.supports.keys()
+        bonuses = SupportBonuses()
+
+        x_max, y_max = len(self.tiles[0]), len(self.tiles)
+
+        for x in range(-3, 4):
+            abs_x = abs(x)
+            for y in range(abs_x - 3, 4 - abs_x):
+                tile_x, tile_y = x + unit_x, y + unit_y
+                if tile_y >= 0 and tile_y < y_max and tile_x >= 0 and tile_x < x_max:
+                    tile_unit = self.tiles[tile_y][tile_x].character
+                    if tile_unit in supports:
+                        bonuses += get_affinity_bonus(aff, tile_unit.affinity)
+
+        unit.support_bonuses = bonuses
 
     def draw(self):
         self.batch.draw()
