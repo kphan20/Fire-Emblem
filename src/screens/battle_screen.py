@@ -4,7 +4,8 @@ from pyglet.sprite import Sprite
 
 from game import resources
 from game.unit import *
-from game.unit_info import SupportBonuses, get_affinity_bonus
+from game.unit_info import SupportBonuses
+from game.affinity import get_affinity_bonus
 from screen import Screen
 
 
@@ -725,7 +726,10 @@ class BattleScreen(Screen, key.KeyStateHandler):
                 if tile_y >= 0 and tile_y < y_max and tile_x >= 0 and tile_x < x_max:
                     tile_unit = self.tiles[tile_y][tile_x].character
                     if tile_unit in supports:
-                        bonuses += get_affinity_bonus(aff, tile_unit.affinity)
+                        bonuses += (
+                            get_affinity_bonus(aff, tile_unit.affinity)
+                            * unit.supports[tile_unit]
+                        )
 
         unit.support_bonuses = bonuses
 

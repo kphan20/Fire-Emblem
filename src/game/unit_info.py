@@ -8,10 +8,6 @@ def add_tuples(first, second):
     return first.__class__(*(field1 + field2 for field1, field2 in zip(first, second)))
 
 
-def get_affinity_bonus(aff1, aff2):
-    return SupportBonuses()
-
-
 # consider switching to dataclass
 class Stats(NamedTuple):
     """Can double as growths object"""
@@ -34,15 +30,18 @@ class Stats(NamedTuple):
 
 
 class SupportBonuses(NamedTuple):
-    attack: int = 0
-    defense: int = 0
-    hit_rate: int = 0
-    avoid: int = 0
-    crit_chance: int = 0
-    crit_avoid: int = 0
+    attack: float = 0
+    defense: float = 0
+    hit_rate: float = 0
+    avoid: float = 0
+    crit_chance: float = 0
+    crit_avoid: float = 0
 
     def __add__(self, other_bonuses):
         return add_tuples(self, other_bonuses)
+
+    def __mul__(self, scalar: int):
+        return self.__class__(*(field1 * scalar for field1 in self))
 
 
 class Class:

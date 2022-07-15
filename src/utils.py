@@ -1,5 +1,5 @@
 import pyglet
-from game import resources
+from game import resources, unit
 import random
 import json
 import os
@@ -51,7 +51,7 @@ class Tile(pyglet.sprite.Sprite):
         """
         self.color = color
 
-    def set_character(self, character):
+    def set_character(self, character: unit.Character):
         """Adds character to tile and positions them correctly
 
         Args:
