@@ -103,6 +103,14 @@ class Weapon(Item):
             self.weapon_range = WeaponRange(1, 1)
 
     def get_weapon_triangle(self, other_weapon: Weapon):
+        """Returns weapon triangle damage and accuracy boost
+
+        Args:
+            other_weapon (Weapon): _description_
+
+        Returns:
+            _type_: _description_
+        """
         if other_weapon is None or self.weapon_type == other_weapon.weapon_type:
             return 0, 0
         if (

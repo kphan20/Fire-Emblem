@@ -7,6 +7,12 @@ from game.item import WeaponType
 from game.unit import *
 from game.unit_info import SupportBonuses
 from game.affinity import get_affinity_bonus
+from game.game_formulas import (
+    damage_calc,
+    accuracy_calc,
+    determine_hit,
+    crit_accuracy_calc,
+)
 from .screen import Screen
 
 
@@ -122,8 +128,9 @@ class BattleScreen(Screen, key.KeyStateHandler):
         self.enemies_in_range = []
 
         # stores unit that player is currently clicked on
-        self.selected_unit = None
+        self.selected_unit: Character = None
 
+        # index of selected enemy
         self.selected_enemy = None
 
         # 2d array that marks selected character movement range
@@ -165,9 +172,25 @@ class BattleScreen(Screen, key.KeyStateHandler):
         self.test_character3 = Character(
             resources.player_image, self.batch, self.foreground, team=1
         )
-        self.tiles[self.current_x][self.current_y].set_character(self.test_character)
+        self.tiles[self.current_y][self.current_x].set_character(self.test_character)
         self.test_character.add_item(
-            Weapon(5, 5, WeaponType.SWORD, weapon_range=WeaponRange(3, 10))
+            Weapon(
+                5,
+                5,
+                WeaponType.SWORD,
+                might=1,
+                weapon_range=WeaponRange(3, 10),
+                hit=100,
+            )
+        )
+        self.test_character2.add_item(
+            Weapon(
+                5,
+                5,
+                WeaponType.SWORD,
+                weapon_range=WeaponRange(3, 10),
+                hit=100,
+            )
         )
         self.tiles[5][4].set_character(self.test_character2)
         self.tiles[4][5].set_character(self.test_character3)
@@ -404,8 +427,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
             x_coordinate, y_coordinate = destination_x, destination_y
             path = []
             previous_change = None
-            # print((destination_x, destination_y))
-            # print(self.selected_x, self.selected_y)
+
             while x_coordinate != self.selected_x or y_coordinate != self.selected_y:
                 # Checks right, left, up, and down tiles for their values
                 tile_values = check(x_coordinate, y_coordinate)
@@ -490,6 +512,17 @@ class BattleScreen(Screen, key.KeyStateHandler):
                 offset_x += offset_size
             offset_x = 0
             offset_y += offset_size
+
+    @staticmethod
+    def perform_attack(attacking_unit: Character, attacked_unit: Character):
+        acc = accuracy_calc(attacking_unit, attacked_unit, 0)
+        if determine_hit(acc):
+            crit_acc = crit_accuracy_calc(attacking_unit, attacked_unit)
+            damage = damage_calc(
+                attacking_unit, attacked_unit, is_crit=determine_hit(crit_acc)
+            )
+            return attacked_unit.take_damage(damage)
+        return False
 
     def camera_bounds(self, direction):
         camera_x_pos = self.current_x - self.bot_left_x
@@ -576,6 +609,13 @@ class BattleScreen(Screen, key.KeyStateHandler):
             )
             self.shift_tiles()
 
+    def move_tile_selector(self, new_x: int, new_y: int):
+        """
+        Takes tile coordinates and moves tile selector to that tile
+        """
+        self.tile_selector.x = new_x * self.ADJUSTED_TILE_SIZE
+        self.tile_selector.y = new_y * self.ADJUSTED_TILE_SIZE
+
     def on_key_press(self, symbol, modifiers):
         super().on_key_press(symbol, modifiers)
 
@@ -585,26 +625,48 @@ class BattleScreen(Screen, key.KeyStateHandler):
                 if self.attack_view:
                     if self.enemies_in_range:
                         # TODO-handle attacking an enemy here
+                        # TODO-add terrain bonuses
+                        self.update_supports_for_unit(
+                            self.selected_unit, self.current_x, self.current_y
+                        )
+
+                        enemy_x, enemy_y = self.enemies_in_range[self.selected_enemy]
+                        enemy = self.tiles[enemy_y][enemy_x].character
+
+                        self.update_supports_for_unit(enemy, enemy_x, enemy_y)
+
+                        if BattleScreen.perform_attack(self.selected_unit, enemy):
+                            self.tiles[enemy_y][enemy_x].character = None
+                            enemy.delete()
+                        elif BattleScreen.perform_attack(enemy, self.selected_unit):
+                            self.tiles[self.current_y][self.current_x].character = None
+                            self.selected_unit.delete()
 
                         self.tile_selector.image = resources.tile_selector_animation
+                        self.move_tile_selector(
+                            self.current_x - self.bot_left_x,
+                            self.current_y - self.bot_left_y,
+                        )
 
                     # reset
                     self.reset_tiles()
                     self.reset_after_select()
                     return
 
-                if (
-                    self.current_moves[self.current_y][self.current_x] > 0
-                    and self.tiles[self.current_y][self.current_x].character is None
+                if self.current_moves[self.current_y][self.current_x] > 0 and (
+                    self.tiles[self.current_y][self.current_x].character is None
+                    or self.tiles[self.current_y][self.current_x].character
+                    is self.selected_unit
                 ):
-                    # move selected character
-                    self.tiles[self.current_y][self.current_x].set_character(
-                        self.selected_unit
-                    )
 
                     self.tiles[self.selected_starting_y][
                         self.selected_starting_x
                     ].character = None
+
+                    # move selected character
+                    self.tiles[self.current_y][self.current_x].set_character(
+                        self.selected_unit
+                    )
 
                     # updates current character coordinates
                     self.selected_x, self.selected_y = self.current_x, self.current_y
@@ -625,9 +687,9 @@ class BattleScreen(Screen, key.KeyStateHandler):
                         )
                         self.selected_enemy = 0
                         enemy_x, enemy_y = self.enemies_in_range[0]
-                        tile_size = self.ADJUSTED_TILE_SIZE
-                        self.tile_selector.x = (enemy_x - self.bot_left_x) * tile_size
-                        self.tile_selector.y = (enemy_y - self.bot_left_y) * tile_size
+                        self.move_tile_selector(
+                            enemy_x - self.bot_left_x, enemy_y - self.bot_left_y
+                        )
                     else:
                         # remove coloring if no enemies in range
                         self.reset_tiles()
@@ -717,9 +779,9 @@ class BattleScreen(Screen, key.KeyStateHandler):
                     self.selected_starting_y,
                 )
 
-                tile_size = self.ADJUSTED_TILE_SIZE
-                self.tile_selector.x = (self.current_x - self.bot_left_x) * tile_size
-                self.tile_selector.y = (self.current_y - self.bot_left_y) * tile_size
+                self.move_tile_selector(
+                    self.current_x - self.bot_left_x, self.current_y - self.bot_left_y
+                )
 
                 self.reset_after_select()
 
@@ -767,12 +829,13 @@ class BattleScreen(Screen, key.KeyStateHandler):
         for option in options:
             if self[option]:
                 self.camera_bounds(option)
-        tile_size = self.ADJUSTED_TILE_SIZE
+
         if not self.attack_view:
             self.current_x = self.clamp(self.tiles[0], self.current_x + change_x)
             self.current_y = self.clamp(self.tiles, self.current_y + change_y)
-            self.tile_selector.x = (self.current_x - self.bot_left_x) * tile_size
-            self.tile_selector.y = (self.current_y - self.bot_left_y) * tile_size
+            self.move_tile_selector(
+                self.current_x - self.bot_left_x, self.current_y - self.bot_left_y
+            )
             # draws path if not attacking and unit is selected
             if self.selected_unit:
                 if self.current_moves[self.current_y][self.current_x] > 0:
@@ -798,5 +861,6 @@ class BattleScreen(Screen, key.KeyStateHandler):
             self.selected_enemy = (self.selected_enemy + num_enemies) % num_enemies
 
             enemy_x, enemy_y = self.enemies_in_range[self.selected_enemy]
-            self.tile_selector.x = (enemy_x - self.bot_left_x) * tile_size
-            self.tile_selector.y = (enemy_y - self.bot_left_y) * tile_size
+            self.move_tile_selector(
+                enemy_x - self.bot_left_x, enemy_y - self.bot_left_y
+            )

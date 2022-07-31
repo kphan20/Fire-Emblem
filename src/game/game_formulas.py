@@ -1,7 +1,7 @@
 import random
 
-from unit import Character
-from item import WeaponRank
+from .unit import Character
+from .item import Weapon, WeaponRank
 
 
 def attack_speed(selected_unit: Character):
@@ -102,7 +102,7 @@ def attack_power(attacking_unit: Character, attacked_unit: Character):
     weapon_effectiveness = 1
     if equipped_weapon:
         might = equipped_weapon.might
-        weapon_triangle = equipped_weapon.get_weapon_triangle(
+        triangle_damage, _ = equipped_weapon.get_weapon_triangle(
             attacked_unit.get_equipped_weapon()
         )
         weapon_effectiveness = equipped_weapon.get_weapon_effectiveness(
@@ -110,9 +110,9 @@ def attack_power(attacking_unit: Character, attacked_unit: Character):
         )
     else:
         might = 0
-        weapon_triangle = 0
-    support = attacking_unit.find_supports()
-    return strength + (might + weapon_triangle) * weapon_effectiveness + support
+        triangle_damage = 0
+    support = attacking_unit.support_bonuses.attack
+    return strength + (might + triangle_damage) * weapon_effectiveness + support
 
 
 def defense_power(attacked_unit: Character, terrain_bonus=0, is_magic=False):
@@ -148,7 +148,8 @@ def critrate_calc(attacking_unit: Character):
     s_rank = 0
     if equipped_weapon:
         weapon_critical = equipped_weapon.crit_rate
-        s_rank = attacking_unit.weapon_ranks[equipped_weapon.weapon_type]
+        if attacking_unit.weapon_ranks.get(equipped_weapon.weapon_type) == WeaponRank.S:
+            s_rank = 5
     support = attacking_unit.support_bonuses.crit_chance
     return (
         weapon_critical

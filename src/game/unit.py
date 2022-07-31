@@ -23,6 +23,7 @@ class Character(pyglet.sprite.Sprite):
         team=0,
         default_level=1,
         name="",
+        current_hp=1,
     ):
         super().__init__(img=img, batch=batch, group=group)
 
@@ -36,6 +37,10 @@ class Character(pyglet.sprite.Sprite):
         self.level = level
         self.default_level = default_level
         self.stats = stats
+        if stats is None:
+            self.stats = Stats()
+        self.current_hp = min(current_hp, self.stats.hp)
+
         self.items: list[Item] = inventory or []  # will need to filter out non weapons
         self.growths = Stats()
         self.team = team  # Probably use ints for team numbers
@@ -116,3 +121,15 @@ class Character(pyglet.sprite.Sprite):
 
         for stat in stat_names:
             self.stats[stat] = int(level_diff * self.growths[stat] / 100)
+
+    def take_damage(self, damage: int) -> bool:
+        """Applies damage to the character
+
+        Args:
+            damage (int): amount of damage
+
+        Returns:
+            bool: whether the unit dies or not
+        """
+        self.current_hp -= damage
+        return self.current_hp <= 0
