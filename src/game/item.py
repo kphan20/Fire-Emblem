@@ -57,13 +57,19 @@ class Item:
         return self.value * (self.uses_left / self.uses) / 2
 
 
+class WeaponRange:
+    def __init__(self, min_range, max_range):
+        self.min_range = min_range
+        self.max_range = max_range
+
+
 class Weapon(Item):
     def __init__(
         self,
-        uses,
-        value,
-        effects,
+        uses: int,
+        value: int,
         weapon_type: WeaponType,
+        effects=None,
         name="",
         description="",
         might=0,
@@ -75,6 +81,7 @@ class Weapon(Item):
         weapon_exp=0,
         personal_weapon_owner=None,
         is_reaver=False,
+        weapon_range=None,
     ):
         super().__init__(uses, value, effects, ItemType.WEAPON, uses_left)
         self.weapon_type = weapon_type
@@ -91,8 +98,19 @@ class Weapon(Item):
         self.weapon_attributes = (
             {}
         )  # will have attribute name keys and multipliers items
+        self.weapon_range = weapon_range
+        if weapon_range is None:
+            self.weapon_range = WeaponRange(1, 1)
 
     def get_weapon_triangle(self, other_weapon: Weapon):
+        """Returns weapon triangle damage and accuracy boost
+
+        Args:
+            other_weapon (Weapon): _description_
+
+        Returns:
+            _type_: _description_
+        """
         if other_weapon is None or self.weapon_type == other_weapon.weapon_type:
             return 0, 0
         if (
