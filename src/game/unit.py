@@ -3,8 +3,8 @@ import pyglet
 import random
 
 
-from item import ItemType, Item, Weapon
-from unit_info import Stats, Class, SupportBonuses
+from .item import ItemType, Item, Weapon, WeaponRange
+from .unit_info import Stats, Class, SupportBonuses
 from scraper.utils import stat_names
 
 
@@ -16,9 +16,9 @@ class Character(pyglet.sprite.Sprite):
         img,
         batch,
         group,
-        level,
-        stats: Stats,
-        class_type: Class,
+        level=1,
+        stats: Stats = None,
+        class_type: Class = None,
         inventory=None,
         team=0,
         default_level=1,
@@ -29,6 +29,7 @@ class Character(pyglet.sprite.Sprite):
         self.name = name
         # Used for game classes (eg. paladin, assassin, etc.)
         self.class_type = class_type  # Class({0: 1, 1: 3}, 0, 0, 0)
+        self.class_type = Class({0: 1, 1: 3}, 0, 0, 0)
 
         # Individual based stats
         # self.battle_sprite = pyglet.sprite.Sprite() # used for battle animation
@@ -41,7 +42,7 @@ class Character(pyglet.sprite.Sprite):
 
         self.weapon_ranks = {}
 
-        self.affinity = None
+        self.affinity: str = None
         self.supports = {}  # character object key, support level items
         self.support_bonuses = (
             SupportBonuses()
@@ -64,6 +65,10 @@ class Character(pyglet.sprite.Sprite):
 
         return self.items[index] if index is not None else index
 
+    def get_weapon_range(self) -> WeaponRange:
+        equipped_weapon = self.get_equipped_weapon()
+        return equipped_weapon.weapon_range if equipped_weapon else WeaponRange(0, 0)
+
     def equip_weapon(self, inventory_slot):
         """Changes the current equipped weapon
 
@@ -75,6 +80,12 @@ class Character(pyglet.sprite.Sprite):
             self.items[inventory_slot],
             self.items[current_equipped],
         )
+
+    def add_item(self, item: Item) -> bool:
+        if len(self.items) < 5:
+            self.items.append(item)
+            return True
+        return False
 
     @staticmethod
     def get_growth_stat_increase(percentage):

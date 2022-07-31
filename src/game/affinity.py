@@ -1,4 +1,4 @@
-from unit_info import SupportBonuses
+from .unit_info import SupportBonuses
 
 affinity_bonuses = {
     "Fire": SupportBonuses(attack=0.5, hit_rate=2.5, avoid=2.5, crit_chance=2.5),
