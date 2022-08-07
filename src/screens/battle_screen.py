@@ -1,19 +1,31 @@
+from typing import Dict, List
 from pyglet.graphics import Batch, OrderedGroup
 from pyglet.window import key
 from pyglet.sprite import Sprite
 
 from game import resources
 from game.item import WeaponType
-from game.unit import *
-from game.unit_info import SupportBonuses
-from game.affinity import get_affinity_bonus
+from game.unit import Character, Weapon, WeaponRange
 from game.game_formulas import (
     damage_calc,
     accuracy_calc,
     determine_hit,
     crit_accuracy_calc,
 )
+from game.tile import generate_map_tiles
 from .screen import Screen
+from .battle_screen_helpers.tile_helpers import (
+    generate_empty_array,
+    reset_tiles,
+    remove_tiles_from_batch,
+    add_tiles_to_batch,
+    color_tiles,
+    fill_attacks,
+    find_enemies_in_range,
+    draw_path,
+    update_supports_for_unit,
+)
+import utils
 
 
 def four_direction_decorator(func):
@@ -35,8 +47,6 @@ def four_direction_decorator(func):
 
     return wrapper
 
-
-import utils
 
 # for path_finder method
 
@@ -81,7 +91,7 @@ arrow_image_config = {
     "arrowDown": (80, 40, 40, 0),
     "arrowUp": (80, 40, 40, 40),
 }
-rootConfig = {
+root_config = {
     "rootLeft": (40, 20),
     "rootRight": (0, 20),
     "rootUp": (20, 0),
@@ -156,7 +166,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
 
         # 2d array of Tile objects
         # use generate_map_tiles for testing
-        self.tiles = utils.generate_map_tiles(
+        self.tiles = generate_map_tiles(
             None, self.background, self.screen_tile_width, self.screen_tile_height
         )
         for row in range(self.screen_tile_height + 1):
@@ -195,42 +205,6 @@ class BattleScreen(Screen, key.KeyStateHandler):
         self.tiles[5][4].set_character(self.test_character2)
         self.tiles[4][5].set_character(self.test_character3)
 
-    def generate_empty_array(self):
-        """Generates empty 2D array for movement/attack range calculations
-
-        Returns:
-            list[list[int]]: 2D array filled with zeroes and is as big as the tilemap
-        """
-        tile_arr = self.tiles
-        width = len(tile_arr[0])
-        height = len(tile_arr)
-        return [[0 for _ in range(width)] for _ in range(height)]
-
-    def reset_tiles(self):
-        """Changes all the tiles on the tilemap back to normal colors"""
-        for row in self.tiles:
-            for tile in row:
-                tile.clear_tile()
-
-    @staticmethod
-    def remove_tiles_from_batch(tile_arr):
-        """Removes tiles from batch as camera moves
-
-        Args:
-            tile_arr (list[Tile]): References to tiles that have gotten out of frame
-        """
-        for tile in tile_arr:
-            tile.set_batch(None)
-
-    def add_tiles_to_batch(self, tile_arr):
-        """Adds tiles to batch as camera moves
-
-        Args:
-            tile_arr (list[Tile]): References to tiles that just entered frame
-        """
-        for tile in tile_arr:
-            tile.set_batch(self.batch)
-
     @staticmethod
     def clamp(list, index):
         """Checks if a coordinate is within the boundaries of the tilemap
@@ -263,7 +237,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
         """
         # assuming rectangular map
         tile_arr = self.tiles
-        filler = self.generate_empty_array()
+        filler = generate_empty_array(self.tiles)
 
         # get terrain cost dict of character
         terrain_cost = self.selected_unit.class_type.terrain_cost
@@ -303,62 +277,11 @@ class BattleScreen(Screen, key.KeyStateHandler):
                 fill_move(current_x, current_y, max_move, filler)
             else:
                 # Finds attack range if unit cannot move any further
-                self.fill_attacks(current_x, current_y, max_attack_range, filler)
+                fill_attacks(current_x, current_y, max_attack_range, filler)
                 return
 
         fill_move(current_x, current_y, max_move, filler)
         return filler
-
-    @staticmethod
-    def fill_attacks(current_x, current_y, attack_range, filler):
-        """Depth first search to fill in a unit's attack range
-
-        Args:
-            current_x (int): Current x coordinate being searched
-            current_y (int): Current y coordinate being searched
-            attack_range (int): Attack range remaining on search
-            filler (list[list[int]]): Keeps track of results
-        """
-        if (
-            attack_range <= 0
-            or current_x < 0
-            or current_x >= len(filler[0])
-            or current_y < 0
-            or current_y >= len(filler)
-        ):
-            return
-        # Negative squares denote attack squares at border of movement range
-        # Checks if the value on the square is greater than the remaining attack range before continuing search
-        if (
-            filler[current_y][current_x] <= 0
-            and filler[current_y][current_x] > -attack_range
-        ):
-            filler[current_y][current_x] = -attack_range
-            BattleScreen.fill_attacks(
-                current_x + 1, current_y, attack_range - 1, filler
-            )
-            BattleScreen.fill_attacks(
-                current_x - 1, current_y, attack_range - 1, filler
-            )
-            BattleScreen.fill_attacks(
-                current_x, current_y + 1, attack_range - 1, filler
-            )
-            BattleScreen.fill_attacks(
-                current_x, current_y - 1, attack_range - 1, filler
-            )
-
-    def color_tiles(self, filler, min_range=1, max_range=1):
-        """Changes the color of the map tiles when a unit is selected
-
-        Args:
-            filler (list[list[int]]): 2D array holding valid movement/attack squares
-        """
-        for y, row in enumerate(filler):
-            for x, val in enumerate(row):
-                if val > 0:
-                    self.tiles[y][x].change_tint(utils.BLUE_TINT)
-                elif val < 0 and (val >= -(max_range - min_range + 1)):
-                    self.tiles[y][x].change_tint(utils.RED_TINT)
 
     def color_attack_tiles(self, min_range, max_range):
         """Shows a unit's attack range after they have moved
@@ -370,28 +293,14 @@ class BattleScreen(Screen, key.KeyStateHandler):
         Returns:
             [list[list[int]]]: 2D array with attack squares
         """
-        filler = self.generate_empty_array()
-        self.fill_attacks(
+        filler = generate_empty_array(self.tiles)
+        fill_attacks(
             self.current_x, self.current_y, max_range + 1, filler
         )  # change this to current
-        self.color_tiles(filler, min_range, max_range)
+        color_tiles(self.tiles, filler, min_range, max_range)
         return filler
 
-    def find_enemies_in_range(self, filler, min_range, max_range):
-        """Finds the targetable enemies within the selected unit's attack range
-
-        Args:
-            filler (list[list[int]]): Holds the selected unit's attack range
-        """
-        current_team = self.selected_unit.team
-        for y, row in enumerate(filler):
-            for x, tile in enumerate(row):
-                if tile < 0 and tile >= -(max_range - min_range + 1):
-                    enemy_check = self.tiles[y][x].character
-                    if enemy_check and enemy_check.team != current_team:
-                        self.enemies_in_range.append((x, y))
-
-    def path_finder(self, destination_x, destination_y, filler):
+    def path_finder(self, destination_x, destination_y, filler: List[List[int]]):
         """Finds the path from the selected unit's current location to a destination point
 
         Args:
@@ -464,7 +373,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
                     arrow_string = "rootUp"
                 arrow_image = path_resources[arrow_string]
                 arrow_image.width, arrow_image.height = (40, 40)
-                arrow_image.anchor_x, arrow_image.anchor_y = rootConfig[arrow_string]
+                arrow_image.anchor_x, arrow_image.anchor_y = root_config[arrow_string]
                 arrow = Sprite(arrow_image, group=self.foreground)
                 if in_screen_bounds(x_coordinate, y_coordinate):
                     arrow.batch = self.batch
@@ -480,17 +389,6 @@ class BattleScreen(Screen, key.KeyStateHandler):
             path.reverse()
             return path
         return "outside of range"
-
-    def draw_path(self, path):
-        """Changes tile colors in path to green
-
-        Args:
-            path (list): List containing path coordinates
-        """
-        for point in path:
-            if point[2]:
-                # if point[0] >= self.bot_left_x:
-                self.tiles[point[1]][point[0]].set_arrow(point[2])
 
     def reset_after_select(self):
         """Used to reset class variables after unit selection"""
@@ -531,7 +429,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
         if direction == key.LEFT:
             if self.bot_left_x == 0 or camera_x_pos > utils.CAMERA_EDGE - 1:
                 return
-            self.remove_tiles_from_batch(
+            remove_tiles_from_batch(
                 [
                     tiles[self.bot_left_x + self.screen_tile_width - 1]
                     for tiles in self.tiles
@@ -539,13 +437,14 @@ class BattleScreen(Screen, key.KeyStateHandler):
             )
             # moves bottom left to the left 1 tile
             self.bot_left_x -= 1
-            self.add_tiles_to_batch(
+            add_tiles_to_batch(
+                self.batch,
                 [
                     self.tiles[row][self.bot_left_x]
                     for row in range(
                         self.bot_left_y, self.bot_left_y + self.screen_tile_height
                     )
-                ]
+                ],
             )
             self.shift_tiles()
         elif direction == key.RIGHT:
@@ -563,17 +462,18 @@ class BattleScreen(Screen, key.KeyStateHandler):
             # if self.bot_left_x + self.screen_tile_width <= edge_check:
             self.bot_left_x += 1
 
-            self.remove_tiles_from_batch(
+            remove_tiles_from_batch(
                 [tiles[self.bot_left_x - 1] for tiles in self.tiles]
             )
 
-            self.add_tiles_to_batch(
+            add_tiles_to_batch(
+                self.batch,
                 [
                     self.tiles[row][self.bot_left_x + self.screen_tile_width - 1]
                     for row in range(
                         self.bot_left_y, self.bot_left_y + self.screen_tile_height
                     )
-                ]
+                ],
             )
             self.shift_tiles()
         elif direction == key.UP:
@@ -588,24 +488,26 @@ class BattleScreen(Screen, key.KeyStateHandler):
                 return
             # if self.bot_left_y + self.screen_tile_height <= edge_check:
             self.bot_left_y += 1
-            self.remove_tiles_from_batch(self.tiles[self.bot_left_y - 1])
-            self.add_tiles_to_batch(
+            remove_tiles_from_batch(self.tiles[self.bot_left_y - 1])
+            add_tiles_to_batch(
+                self.batch,
                 self.tiles[self.bot_left_y + self.screen_tile_height - 1][
                     self.bot_left_x : self.bot_left_x + self.screen_tile_width
-                ]
+                ],
             )
             self.shift_tiles()
         elif direction == key.DOWN:
             if self.bot_left_y == 0 or camera_y_pos > utils.CAMERA_EDGE - 1:
                 return
-            self.remove_tiles_from_batch(
+            remove_tiles_from_batch(
                 self.tiles[self.bot_left_y + self.screen_tile_height - 1]
             )
             self.bot_left_y -= 1
-            self.add_tiles_to_batch(
+            add_tiles_to_batch(
+                self.batch,
                 self.tiles[self.bot_left_y][
                     self.bot_left_x : self.bot_left_x + self.screen_tile_width
-                ]
+                ],
             )
             self.shift_tiles()
 
@@ -626,14 +528,17 @@ class BattleScreen(Screen, key.KeyStateHandler):
                     if self.enemies_in_range:
                         # TODO-handle attacking an enemy here
                         # TODO-add terrain bonuses
-                        self.update_supports_for_unit(
-                            self.selected_unit, self.current_x, self.current_y
+                        update_supports_for_unit(
+                            self.tiles,
+                            self.selected_unit,
+                            self.current_x,
+                            self.current_y,
                         )
 
                         enemy_x, enemy_y = self.enemies_in_range[self.selected_enemy]
                         enemy = self.tiles[enemy_y][enemy_x].character
 
-                        self.update_supports_for_unit(enemy, enemy_x, enemy_y)
+                        update_supports_for_unit(self.tiles, enemy, enemy_x, enemy_y)
 
                         if BattleScreen.perform_attack(self.selected_unit, enemy):
                             self.tiles[enemy_y][enemy_x].character = None
@@ -649,7 +554,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
                         )
 
                     # reset
-                    self.reset_tiles()
+                    reset_tiles(self.tiles)
                     self.reset_after_select()
                     return
 
@@ -672,14 +577,18 @@ class BattleScreen(Screen, key.KeyStateHandler):
                     self.selected_x, self.selected_y = self.current_x, self.current_y
 
                     # fill in red attack squares
-                    self.reset_tiles()
+                    reset_tiles(self.tiles)
 
                     weapon_range = self.selected_unit.get_weapon_range()
                     self.attack_view = self.color_attack_tiles(
                         weapon_range.min_range, weapon_range.max_range
                     )
-                    self.find_enemies_in_range(
-                        self.attack_view, weapon_range.min_range, weapon_range.max_range
+                    self.enemies_in_range = find_enemies_in_range(
+                        self.selected_unit,
+                        self.tiles,
+                        self.attack_view,
+                        weapon_range.min_range,
+                        weapon_range.max_range,
                     )
                     if self.enemies_in_range:
                         self.tile_selector.image = (
@@ -692,7 +601,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
                         )
                     else:
                         # remove coloring if no enemies in range
-                        self.reset_tiles()
+                        reset_tiles(self.tiles)
 
                     return  # unnecessary
             else:
@@ -727,7 +636,8 @@ class BattleScreen(Screen, key.KeyStateHandler):
                     self.current_moves = self.move_finder(
                         self.current_x, self.current_y, 8, weapon_range.max_range
                     )
-                    self.color_tiles(
+                    color_tiles(
+                        self.tiles,
                         self.current_moves,
                         weapon_range.min_range,
                         weapon_range.max_range,
@@ -786,29 +696,8 @@ class BattleScreen(Screen, key.KeyStateHandler):
                 self.reset_after_select()
 
             # removes markings from tiles
-            self.reset_tiles()
+            reset_tiles(self.tiles)
             return
-
-    def update_supports_for_unit(self, unit: Character, unit_x, unit_y):
-        aff = unit.affinity
-        supports = unit.supports.keys()
-        bonuses = SupportBonuses()
-
-        x_max, y_max = len(self.tiles[0]), len(self.tiles)
-
-        for x in range(-3, 4):
-            abs_x = abs(x)
-            for y in range(abs_x - 3, 4 - abs_x):
-                tile_x, tile_y = x + unit_x, y + unit_y
-                if tile_y >= 0 and tile_y < y_max and tile_x >= 0 and tile_x < x_max:
-                    tile_unit = self.tiles[tile_y][tile_x].character
-                    if tile_unit in supports:
-                        bonuses += (
-                            get_affinity_bonus(aff, tile_unit.affinity)
-                            * unit.supports[tile_unit]
-                        )
-
-        unit.support_bonuses = bonuses
 
     def draw(self):
         self.batch.draw()
@@ -839,17 +728,19 @@ class BattleScreen(Screen, key.KeyStateHandler):
             # draws path if not attacking and unit is selected
             if self.selected_unit:
                 if self.current_moves[self.current_y][self.current_x] > 0:
-                    self.reset_tiles()
+                    reset_tiles(self.tiles)
                     weapon_range = self.selected_unit.get_weapon_range()
-                    self.color_tiles(
+                    color_tiles(
+                        self.tiles,
                         self.current_moves,
                         weapon_range.min_range,
                         weapon_range.max_range,
                     )
-                    self.draw_path(
+                    draw_path(
+                        self.tiles,
                         self.path_finder(
                             self.current_x, self.current_y, self.current_moves
-                        )
+                        ),
                     )
         elif self.enemies_in_range:
             scroll_direction = change_x + change_y
