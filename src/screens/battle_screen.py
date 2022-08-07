@@ -1,4 +1,5 @@
-from typing import Dict, List
+from typing import List
+from collections import OrderedDict
 from pyglet.graphics import Batch, OrderedGroup
 from pyglet.window import key
 from pyglet.sprite import Sprite
@@ -174,10 +175,10 @@ class BattleScreen(Screen, key.KeyStateHandler):
                 self.tiles[row][col].set_batch(self.batch)
 
         self.test_character = Character(
-            resources.player_image, self.batch, self.foreground
+            resources.overworld_anim, self.batch, self.foreground
         )
         self.test_character2 = Character(
-            resources.player_image, self.batch, self.foreground, team=1
+            resources.player_image, self.batch, self.foreground, team=0
         )
         self.test_character3 = Character(
             resources.player_image, self.batch, self.foreground, team=1
@@ -189,7 +190,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
                 5,
                 WeaponType.SWORD,
                 might=1,
-                weapon_range=WeaponRange(3, 10),
+                weapon_range=WeaponRange(1, 2),
                 hit=100,
             )
         )
@@ -204,6 +205,24 @@ class BattleScreen(Screen, key.KeyStateHandler):
         )
         self.tiles[5][4].set_character(self.test_character2)
         self.tiles[4][5].set_character(self.test_character3)
+
+        # TODO- initialize team order
+        self.teams: OrderedDict[int, List[Character]] = OrderedDict()
+        self.characters = [
+            self.test_character,
+            self.test_character2,
+            self.test_character3,
+        ]
+        for character in self.characters:
+            team = self.teams.setdefault(character.team, [])
+            team.append(character)
+
+        self.get_next_team()
+
+    def get_next_team(self):
+        self.current_team, self.current_units = self.teams.popitem(last=False)
+        self.fresh_units = self.current_units[:]
+        print(self.fresh_units)
 
     @staticmethod
     def clamp(list, index):
@@ -541,9 +560,11 @@ class BattleScreen(Screen, key.KeyStateHandler):
                         update_supports_for_unit(self.tiles, enemy, enemy_x, enemy_y)
 
                         if BattleScreen.perform_attack(self.selected_unit, enemy):
+                            self.teams[enemy.team].remove(enemy)
                             self.tiles[enemy_y][enemy_x].character = None
                             enemy.delete()
                         elif BattleScreen.perform_attack(enemy, self.selected_unit):
+                            self.current_units.remove(self.selected_unit)
                             self.tiles[self.current_y][self.current_x].character = None
                             self.selected_unit.delete()
 
@@ -554,6 +575,14 @@ class BattleScreen(Screen, key.KeyStateHandler):
                         )
 
                     # reset
+                    self.fresh_units.remove(self.selected_unit)
+                    self.selected_unit.character_moved()
+                    if len(self.fresh_units) == 0:
+                        for unit in self.current_units:
+                            unit.refresh()
+                        self.teams[self.current_team] = self.current_units
+                        self.get_next_team()
+
                     reset_tiles(self.tiles)
                     self.reset_after_select()
                     return
@@ -611,7 +640,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
 
                 # if character on selected tile
                 # TODO-change this to account for teams (don't select enemy units)
-                if character:
+                if character and character in self.fresh_units:
                     # select character and draw their movement
 
                     # updates game state

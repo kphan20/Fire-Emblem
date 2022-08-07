@@ -68,3 +68,7 @@ menu_option = pyglet.resource.image("menu/menu option.png")
 # from utils import TILE_SIZE
 # tile = tileset.get_region(x=TILE_SIZE * 10, y=TILE_SIZE * 20, width=TILE_SIZE, height=TILE_SIZE)
 # tile2 = tileset.get_region(x=TILE_SIZE * 20, y =TILE_SIZE * 5, width = TILE_SIZE, height=TILE_SIZE)
+
+overworld = pyglet.resource.image("characters/eliwoodoverworld.png")
+overworld_seq = pyglet.image.ImageGrid(overworld, 3, 1)
+overworld_anim = pyglet.image.Animation.from_image_sequence(overworld_seq, duration=0.2)

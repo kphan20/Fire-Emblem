@@ -6,6 +6,7 @@ import random
 from .item import ItemType, Item, Weapon, WeaponRange
 from .unit_info import Stats, Class, SupportBonuses
 from scraper.utils import stat_names
+import utils
 
 
 class Character(pyglet.sprite.Sprite):
@@ -25,6 +26,11 @@ class Character(pyglet.sprite.Sprite):
         name="",
         current_hp=1,
     ):
+        if hasattr(img, "frames"):
+            adjusted_size = utils.TILE_SCALE * utils.TILE_SIZE
+            for frame in img.frames:
+                frame.image.height = adjusted_size
+                frame.image.width = adjusted_size
         super().__init__(img=img, batch=batch, group=group)
 
         self.name = name
@@ -133,3 +139,9 @@ class Character(pyglet.sprite.Sprite):
         """
         self.current_hp -= damage
         return self.current_hp <= 0
+
+    def character_moved(self):
+        self.color = utils.GRAY_TINT
+
+    def refresh(self):
+        self.color = utils.NORMAL_TINT
