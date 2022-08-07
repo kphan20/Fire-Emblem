@@ -1,7 +1,7 @@
 import random
 
 from .unit import Character
-from .item import Weapon, WeaponRank
+from .item import WeaponRank
 
 
 def attack_speed(selected_unit: Character):

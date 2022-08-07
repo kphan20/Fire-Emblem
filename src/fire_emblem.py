@@ -16,10 +16,7 @@ class Window(pyglet.window.Window):
         )
         if battle_screen_test:
             self.current_screen = BattleScreen(self.width, self.height)
-        # display = pyglet.canvas.Display().get_default_screen()
-        # self.background = pyglet.image.SolidColorImagePattern().create_image(
-        #     display.width, display.height
-        # )
+
         if not battle_screen_test:
             self.current_screen.push_handlers(self)
         self.push_handlers(self.current_screen)

@@ -14,7 +14,7 @@ class Tile(pyglet.sprite.Sprite):
         self.tile_type = tile_type
         self.character = None
         self.arrow = None
-        self.bruh = pyglet.graphics.OrderedGroup(2)
+        self.test_group = pyglet.graphics.OrderedGroup(2)
         self.text = pyglet.text.Label(
             f"{x / (TILE_SCALE * TILE_SIZE)}, {y / (TILE_SCALE * TILE_SIZE)}",
             font_name="Times New Roman",
@@ -22,7 +22,7 @@ class Tile(pyglet.sprite.Sprite):
             x=x,
             y=y,
             batch=batch,
-            group=self.bruh,
+            group=self.test_group,
         )
 
     def change_tint(self, color):
