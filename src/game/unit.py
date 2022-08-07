@@ -6,6 +6,7 @@ import random
 from .item import ItemType, Item, Weapon, WeaponRange
 from .unit_info import Stats, Class, SupportBonuses
 from scraper.utils import stat_names
+import utils
 
 
 class Character(pyglet.sprite.Sprite):
@@ -133,3 +134,9 @@ class Character(pyglet.sprite.Sprite):
         """
         self.current_hp -= damage
         return self.current_hp <= 0
+
+    def character_moved(self):
+        self.color = utils.RED_TINT
+
+    def refresh(self):
+        self.color = utils.NORMAL_TINT
