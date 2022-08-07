@@ -9,6 +9,7 @@ class Window(pyglet.window.Window):
             width=resources.starting_screen.get_max_width(),
             height=resources.starting_screen.get_max_height(),
             # fullscreen=True,
+            # vsync=False,
         )
         self.current_screen = StartingScreen(
             resources.starting_screen.get_max_width(),
@@ -52,6 +53,6 @@ class Window(pyglet.window.Window):
         self.current_screen.draw()
 
 
-window = Window()
-pyglet.clock.schedule_interval(window.update, 1 / 10)
+window = Window(True)
+pyglet.clock.schedule_interval(window.update, 1 / 15)
 pyglet.app.run()

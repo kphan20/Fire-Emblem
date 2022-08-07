@@ -8,3 +8,6 @@ intro.py
 *.xcf
 .env
 archive/
+
+*.png
+*.pyprof
