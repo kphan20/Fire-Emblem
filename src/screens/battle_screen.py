@@ -109,7 +109,7 @@ arrow_key_dict = {
 
 class BattleScreen(Screen, key.KeyStateHandler):
     def __init__(self, width, height):
-        super().__init__(resources.starting_screen, width, height)
+        super().__init__()
 
         self.ADJUSTED_TILE_SIZE = utils.TILE_SCALE * utils.TILE_SIZE
 

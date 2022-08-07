@@ -3,7 +3,7 @@ from pyglet.sprite import Sprite
 from pyglet.graphics import OrderedGroup
 from pyglet.window import key
 
-from .screen import Screen
+from .screen import ImageScreen
 
 
 class MenuItem:
@@ -24,7 +24,7 @@ class MenuItem:
         self.background_sprite.draw()
 
 
-class StartingMenu(Screen):
+class StartingMenu(ImageScreen):
     def __init__(self, width, height):
         self.foreground_group = OrderedGroup(1)
         super().__init__(resources.circle_animation, width, height)
