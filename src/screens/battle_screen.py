@@ -175,10 +175,10 @@ class BattleScreen(Screen, key.KeyStateHandler):
                 self.tiles[row][col].set_batch(self.batch)
 
         self.test_character = Character(
-            resources.player_image, self.batch, self.foreground
+            resources.overworld_anim, self.batch, self.foreground
         )
         self.test_character2 = Character(
-            resources.player_image, self.batch, self.foreground, team=1
+            resources.player_image, self.batch, self.foreground, team=0
         )
         self.test_character3 = Character(
             resources.player_image, self.batch, self.foreground, team=1
@@ -190,7 +190,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
                 5,
                 WeaponType.SWORD,
                 might=1,
-                weapon_range=WeaponRange(3, 10),
+                weapon_range=WeaponRange(1, 2),
                 hit=100,
             )
         )

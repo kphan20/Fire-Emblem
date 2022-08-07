@@ -26,6 +26,11 @@ class Character(pyglet.sprite.Sprite):
         name="",
         current_hp=1,
     ):
+        if hasattr(img, "frames"):
+            adjusted_size = utils.TILE_SCALE * utils.TILE_SIZE
+            for frame in img.frames:
+                frame.image.height = adjusted_size
+                frame.image.width = adjusted_size
         super().__init__(img=img, batch=batch, group=group)
 
         self.name = name
@@ -136,7 +141,7 @@ class Character(pyglet.sprite.Sprite):
         return self.current_hp <= 0
 
     def character_moved(self):
-        self.color = utils.RED_TINT
+        self.color = utils.GRAY_TINT
 
     def refresh(self):
         self.color = utils.NORMAL_TINT
