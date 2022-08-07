@@ -52,6 +52,6 @@ class Window(pyglet.window.Window):
         self.current_screen.draw()
 
 
-window = Window(True)
+window = Window()
 pyglet.clock.schedule_interval(window.update, 1 / 10)
 pyglet.app.run()
