@@ -26,6 +26,7 @@ from .battle_screen_helpers.tile_helpers import (
     draw_path,
     update_supports_for_unit,
 )
+from .menus.combat_info import CombatMenu
 import utils
 
 
@@ -123,6 +124,10 @@ class BattleScreen(Screen, key.KeyStateHandler):
         self.background = OrderedGroup(0)
         self.foreground = OrderedGroup(1)
         self.selector = OrderedGroup(2)
+        self.menu = OrderedGroup(3)
+        self.text = OrderedGroup(4)
+
+        self.combat_menu_sprite = CombatMenu(None, self.menu, self.text, width)
 
         # coordinates of the cursor/selector
         self.current_x = 0
@@ -190,7 +195,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
                 5,
                 WeaponType.SWORD,
                 might=1,
-                weapon_range=WeaponRange(1, 2),
+                weapon_range=WeaponRange(1, 1),
                 hit=100,
             )
         )
@@ -313,9 +318,8 @@ class BattleScreen(Screen, key.KeyStateHandler):
             [list[list[int]]]: 2D array with attack squares
         """
         filler = generate_empty_array(self.tiles)
-        fill_attacks(
-            self.current_x, self.current_y, max_range + 1, filler
-        )  # change this to current
+        # add one to account for starting at character position
+        fill_attacks(self.current_x, self.current_y, max_range + 1, filler)
         color_tiles(self.tiles, filler, min_range, max_range)
         return filler
 
@@ -547,6 +551,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
                     if self.enemies_in_range:
                         # TODO-handle attacking an enemy here
                         # TODO-add terrain bonuses
+                        self.combat_menu_sprite.set_batch(None)
                         update_supports_for_unit(
                             self.tiles,
                             self.selected_unit,
@@ -628,6 +633,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
                         self.move_tile_selector(
                             enemy_x - self.bot_left_x, enemy_y - self.bot_left_y
                         )
+                        self.combat_menu_sprite.set_batch(self.batch)
                     else:
                         # remove coloring if no enemies in range
                         reset_tiles(self.tiles)
@@ -726,6 +732,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
 
             # removes markings from tiles
             reset_tiles(self.tiles)
+            self.combat_menu_sprite.set_batch(None)
             return
 
     def draw(self):
@@ -784,3 +791,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
             self.move_tile_selector(
                 enemy_x - self.bot_left_x, enemy_y - self.bot_left_y
             )
+
+            enemy = self.tiles[enemy_y][enemy_x].character
+            curr_unit = self.selected_unit
+            self.combat_menu_sprite.update_text_with_characters(curr_unit, enemy)
