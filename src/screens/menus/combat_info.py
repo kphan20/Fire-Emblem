@@ -133,11 +133,16 @@ class CombatMenu(pyglet.sprite.Sprite):
         return str(curr_mt), str(curr_hit), str(curr_crit)
 
     def update_text_with_characters(
-        self, attacking_unit: Character, attacked_unit: Character
+        self, attacking_unit: Character, attacked_unit: Character, can_counter: bool
     ):
+        enemy_info = (
+            self.get_info(attacked_unit, attacking_unit)
+            if can_counter
+            else (None, None, None)
+        )
         self.set_text(
             str(attacking_unit.current_hp),
             *self.get_info(attacking_unit, attacked_unit),
             str(attacked_unit.current_hp),
-            *self.get_info(attacked_unit, attacking_unit),
+            *enemy_info,
         )
