@@ -200,5 +200,7 @@ def damage_calc(
     return 0 if base < 0 else base
 
 
-def determine_hit(percentage):
+def determine_hit(percentage, two_rn=False):
+    if two_rn:
+        return (random.randint(0, 100) + random.randint(0, 100)) // 2 < percentage
     return random.randint(0, 100) < percentage
