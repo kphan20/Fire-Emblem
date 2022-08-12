@@ -15,7 +15,7 @@ menu_items = listdir("../resources/menu")
 circle_animation = pyglet.resource.animation("menu/startmenubackground.gif")
 
 # Current player placeholder image
-player_image = pyglet.resource.image("characters/" + images[0])
+player_image = pyglet.resource.image("characters/eliwoodpromoted.png")
 
 # Creates tileset grid
 tileset = pyglet.resource.image("terrain/" + tilesets[0])
@@ -72,3 +72,5 @@ menu_option = pyglet.resource.image("menu/menu option.png")
 overworld = pyglet.resource.image("characters/eliwoodoverworld.png")
 overworld_seq = pyglet.image.ImageGrid(overworld, 3, 1)
 overworld_anim = pyglet.image.Animation.from_image_sequence(overworld_seq, duration=0.2)
+
+combat_menu = pyglet.resource.image("gameplayui/combat_info.png")
