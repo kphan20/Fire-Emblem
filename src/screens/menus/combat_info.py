@@ -9,6 +9,7 @@ from game.game_formulas import (
     accuracy_calc,
     crit_accuracy_calc,
 )
+from utils import set_texture_mag_filter
 
 hp_y_offset = 360
 mt_y_offset = 290
@@ -23,6 +24,8 @@ class CombatMenu(pyglet.sprite.Sprite):
         self, batch: Batch, menu_group: Group, text_group: Group, screen_width: int
     ):
         super().__init__(resources.combat_menu, batch=batch, group=menu_group)
+
+        set_texture_mag_filter(self._texture)
 
         self.scale = 4
         x_pos = screen_width - self.width - 25
