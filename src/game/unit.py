@@ -33,6 +33,8 @@ class Character(pyglet.sprite.Sprite):
                 frame.image.width = adjusted_size
         super().__init__(img=img, batch=batch, group=group)
 
+        utils.set_texture_mag_filter(self._texture)
+
         self.name = name
         # Used for game classes (eg. paladin, assassin, etc.)
         self.class_type = class_type  # Class({0: 1, 1: 3}, 0, 0, 0)
