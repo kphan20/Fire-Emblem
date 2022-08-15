@@ -93,22 +93,48 @@ def fill_attacks(current_x, current_y, attack_range, filler):
         fill_attacks(current_x, current_y - 1, attack_range - 1, filler)
 
 
-def find_enemies_in_range(
-    selected_unit: Character, tiles: List[List[Tile]], filler, min_range, max_range
-):
-    """Finds the targetable enemies within the selected unit's attack range
+def dist_in_range(unit: Character, manhattan_dist: int):
+    weapon_range = unit.get_weapon_range()
+    return (
+        weapon_range.min_range > 0
+        and weapon_range.min_range <= manhattan_dist <= weapon_range.max_range
+    )
 
-    Args:
-        filler (list[list[int]]): Holds the selected unit's attack range
-    """
-    current_team = selected_unit.team
+
+def find_enemies_in_range(
+    unit: Character,
+    tiles: List[List[Tile]],
+    unit_x,
+    unit_y,
+    min_range,
+    max_range,
+):
+    """Finds the targetable enemies within the selected unit's attack range"""
+    x_max, y_max = len(tiles[0]), len(tiles)
+
     enemies_in_range = []
-    for y, row in enumerate(filler):
-        for x, tile in enumerate(row):
-            if tile < 0 and tile >= -(max_range - min_range + 1):
-                enemy_check = tiles[y][x].character
-                if enemy_check and enemy_check.team != current_team:
-                    enemies_in_range.append((x, y))
+    if max_range == 0:
+        return enemies_in_range
+
+    for x in range(-max_range, max_range + 1):
+        abs_x = abs(x)
+        for y in range(abs_x - max_range, max_range + 1 - abs_x):
+            tile_x, tile_y = x + unit_x, y + unit_y
+            manhattan_dist = abs_x + abs(y)
+            if (
+                manhattan_dist >= min_range
+                and tile_y >= 0
+                and tile_y < y_max
+                and tile_x >= 0
+                and tile_x < x_max
+            ):
+                tile = tiles[tile_y][tile_x]
+                tile.change_tint(utils.RED_TINT)
+                tile_unit = tiles[tile_y][tile_x].character
+                if tile_unit and tile_unit.team != unit.team:
+                    enemies_in_range.append(
+                        (tile_x, tile_y, dist_in_range(tile_unit, manhattan_dist))
+                    )
     return enemies_in_range
 
 

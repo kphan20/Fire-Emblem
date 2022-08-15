@@ -9,6 +9,7 @@ from game.game_formulas import (
     accuracy_calc,
     crit_accuracy_calc,
 )
+from utils import set_texture_mag_filter
 
 hp_y_offset = 360
 mt_y_offset = 290
@@ -23,6 +24,8 @@ class CombatMenu(pyglet.sprite.Sprite):
         self, batch: Batch, menu_group: Group, text_group: Group, screen_width: int
     ):
         super().__init__(resources.combat_menu, batch=batch, group=menu_group)
+
+        set_texture_mag_filter(self._texture)
 
         self.scale = 4
         x_pos = screen_width - self.width - 25
@@ -133,11 +136,16 @@ class CombatMenu(pyglet.sprite.Sprite):
         return str(curr_mt), str(curr_hit), str(curr_crit)
 
     def update_text_with_characters(
-        self, attacking_unit: Character, attacked_unit: Character
+        self, attacking_unit: Character, attacked_unit: Character, can_counter: bool
     ):
+        enemy_info = (
+            self.get_info(attacked_unit, attacking_unit)
+            if can_counter
+            else (None, None, None)
+        )
         self.set_text(
             str(attacking_unit.current_hp),
             *self.get_info(attacking_unit, attacked_unit),
             str(attacked_unit.current_hp),
-            *self.get_info(attacked_unit, attacking_unit),
+            *enemy_info,
         )

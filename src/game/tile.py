@@ -1,7 +1,7 @@
 import pyglet
 from game import resources, unit
 import random
-from utils import TILE_SCALE, TILE_SIZE, NORMAL_TINT
+from utils import TILE_SCALE, TILE_SIZE, NORMAL_TINT, set_texture_mag_filter
 
 map_dimensions = {"width": 22, "height": 15}
 
@@ -10,6 +10,9 @@ class Tile(pyglet.sprite.Sprite):
     def __init__(self, img, x, y, batch, group, tile_type):
         # The sprite is currently still anchored in its bottom left corner
         super().__init__(img=img, x=x, y=y, batch=batch, group=group)
+
+        set_texture_mag_filter(self._texture)
+
         self.scale = TILE_SCALE
         self.tile_type = tile_type
         self.character = None

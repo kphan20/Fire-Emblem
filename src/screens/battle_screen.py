@@ -138,8 +138,8 @@ class BattleScreen(Screen, key.KeyStateHandler):
         self.bot_left_x = 0
         self.bot_left_y = 0
 
-        # stores 2d array that marks selected character attack range
-        self.attack_view = None
+        # flag as to whether the selected unit is about to attack
+        self.attack_view = False
         # stores coordinates of enemies in selected character's range
         self.enemies_in_range = []
 
@@ -417,7 +417,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
         """Used to reset class variables after unit selection"""
         self.selected_unit = None
         self.enemies_in_range = []
-        self.attack_view = None
+        self.attack_view = False
         self.selected_enemy = None
 
     def shift_tiles(self):
@@ -559,7 +559,9 @@ class BattleScreen(Screen, key.KeyStateHandler):
                             self.current_y,
                         )
 
-                        enemy_x, enemy_y = self.enemies_in_range[self.selected_enemy]
+                        enemy_x, enemy_y, can_counter = self.enemies_in_range[
+                            self.selected_enemy
+                        ]
                         enemy = self.tiles[enemy_y][enemy_x].character
 
                         update_supports_for_unit(self.tiles, enemy, enemy_x, enemy_y)
@@ -568,7 +570,9 @@ class BattleScreen(Screen, key.KeyStateHandler):
                             self.teams[enemy.team].remove(enemy)
                             self.tiles[enemy_y][enemy_x].character = None
                             enemy.delete()
-                        elif BattleScreen.perform_attack(enemy, self.selected_unit):
+                        elif can_counter and BattleScreen.perform_attack(
+                            enemy, self.selected_unit
+                        ):
                             self.current_units.remove(self.selected_unit)
                             self.tiles[self.current_y][self.current_x].character = None
                             self.selected_unit.delete()
@@ -614,13 +618,13 @@ class BattleScreen(Screen, key.KeyStateHandler):
                     reset_tiles(self.tiles)
 
                     weapon_range = self.selected_unit.get_weapon_range()
-                    self.attack_view = self.color_attack_tiles(
-                        weapon_range.min_range, weapon_range.max_range
-                    )
+
+                    self.attack_view = True
                     self.enemies_in_range = find_enemies_in_range(
                         self.selected_unit,
                         self.tiles,
-                        self.attack_view,
+                        self.current_x,
+                        self.current_y,
                         weapon_range.min_range,
                         weapon_range.max_range,
                     )
@@ -629,7 +633,12 @@ class BattleScreen(Screen, key.KeyStateHandler):
                             resources.tile_selector_attack_animation
                         )
                         self.selected_enemy = 0
-                        enemy_x, enemy_y = self.enemies_in_range[0]
+                        enemy_x, enemy_y, can_counter = self.enemies_in_range[0]
+                        self.combat_menu_sprite.update_text_with_characters(
+                            self.selected_unit,
+                            self.tiles[enemy_y][enemy_x].character,
+                            can_counter,
+                        )
                         self.move_tile_selector(
                             enemy_x - self.bot_left_x, enemy_y - self.bot_left_y
                         )
@@ -787,11 +796,13 @@ class BattleScreen(Screen, key.KeyStateHandler):
             num_enemies = len(self.enemies_in_range)
             self.selected_enemy = (self.selected_enemy + num_enemies) % num_enemies
 
-            enemy_x, enemy_y = self.enemies_in_range[self.selected_enemy]
+            enemy_x, enemy_y, can_counter = self.enemies_in_range[self.selected_enemy]
             self.move_tile_selector(
                 enemy_x - self.bot_left_x, enemy_y - self.bot_left_y
             )
 
             enemy = self.tiles[enemy_y][enemy_x].character
             curr_unit = self.selected_unit
-            self.combat_menu_sprite.update_text_with_characters(curr_unit, enemy)
+            self.combat_menu_sprite.update_text_with_characters(
+                curr_unit, enemy, can_counter
+            )
