@@ -21,7 +21,11 @@ current_x_offset = 200
 
 class CombatMenu(pyglet.sprite.Sprite):
     def __init__(
-        self, batch: Batch, menu_group: Group, text_group: Group, screen_width: int
+        self,
+        menu_group: Group,
+        text_group: Group,
+        screen_width: int,
+        batch: Batch = None,
     ):
         super().__init__(resources.combat_menu, batch=batch, group=menu_group)
 
