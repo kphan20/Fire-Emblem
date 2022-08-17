@@ -1,10 +1,12 @@
 from __future__ import annotations
+from typing import Dict
 import pyglet
 import random
 
 
 from .item import ItemType, Item, Weapon, WeaponRange
 from .unit_info import Stats, Class, SupportBonuses
+from .affinity import Affinity
 from scraper.utils import stat_names
 import utils
 
@@ -25,6 +27,8 @@ class Character(pyglet.sprite.Sprite):
         default_level=1,
         name="",
         current_hp=1,
+        supports: Dict = dict(),
+        affinity: Affinity = None,
     ):
         if hasattr(img, "frames"):
             adjusted_size = utils.TILE_SCALE * utils.TILE_SIZE
@@ -55,8 +59,8 @@ class Character(pyglet.sprite.Sprite):
 
         self.weapon_ranks = {}
 
-        self.affinity: str = None
-        self.supports = {}  # character object key, support level items
+        self.affinity = affinity
+        self.supports = supports  # character object key, support level items
         self.support_bonuses = (
             SupportBonuses()
         )  # bonuses from supports, calculated frequently
