@@ -1,6 +1,7 @@
 from pyglet.event import EventDispatcher
 from pyglet.graphics import OrderedGroup
 from pyglet.sprite import Sprite
+import utils
 
 
 class Screen(EventDispatcher):
@@ -27,6 +28,7 @@ class ImageScreen(Screen):
             frame.image.height = height
         self.background_group = OrderedGroup(0)
         self.background = Sprite(background, group=self.background_group)
+        utils.set_texture_mag_filter(self.background._texture)
 
     def draw(self):
         self.background.draw()
