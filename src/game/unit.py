@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import Dict
-import pyglet
 import random
 
 
@@ -9,9 +8,10 @@ from .unit_info import Stats, Class, SupportBonuses
 from .affinity import Affinity
 from scraper.utils import stat_names
 import utils
+from extensions import GBASprite
 
 
-class Character(pyglet.sprite.Sprite):
+class Character(GBASprite):
     """Holds all information about a unit, including its sprites, stats and weapons"""
 
     def __init__(
@@ -36,8 +36,6 @@ class Character(pyglet.sprite.Sprite):
                 frame.image.height = adjusted_size
                 frame.image.width = adjusted_size
         super().__init__(img=img, batch=batch, group=group)
-
-        utils.set_texture_mag_filter(self._texture)
 
         self.name = name
         # Used for game classes (eg. paladin, assassin, etc.)

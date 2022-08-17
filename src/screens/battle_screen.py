@@ -2,8 +2,8 @@ from typing import List
 from collections import OrderedDict
 from pyglet.graphics import Batch, OrderedGroup
 from pyglet.window import key
-from pyglet.sprite import Sprite
 
+from extensions import GBASprite as Sprite
 from game import resources
 from game.item import WeaponType
 from game.unit import Character, Weapon, WeaponRange
@@ -270,22 +270,6 @@ class BattleScreen(Screen, key.KeyStateHandler):
                 return
 
         fill_move(current_x, current_y, max_move, filler)
-        return filler
-
-    def color_attack_tiles(self, min_range, max_range):
-        """Shows a unit's attack range after they have moved
-
-        Args:
-            min_range (int): The minimum distance from which a unit can attack
-            max_range (int): The selected unit's max attack range
-
-        Returns:
-            [list[list[int]]]: 2D array with attack squares
-        """
-        filler = generate_empty_array(self.tiles)
-        # add one to account for starting at character position
-        fill_attacks(self.current_x, self.current_y, max_range + 1, filler)
-        color_tiles(self.tiles, filler, min_range, max_range)
         return filler
 
     def path_finder(self, destination_x, destination_y, filler: List[List[int]]):

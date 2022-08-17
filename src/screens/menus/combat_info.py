@@ -9,7 +9,7 @@ from game.game_formulas import (
     accuracy_calc,
     crit_accuracy_calc,
 )
-from utils import set_texture_mag_filter
+from extensions import GBASprite
 
 hp_y_offset = 360
 mt_y_offset = 290
@@ -19,7 +19,7 @@ enemy_x_offset = 20
 current_x_offset = 200
 
 
-class CombatMenu(pyglet.sprite.Sprite):
+class CombatMenu(GBASprite):
     def __init__(
         self,
         menu_group: Group,
@@ -28,8 +28,6 @@ class CombatMenu(pyglet.sprite.Sprite):
         batch: Batch = None,
     ):
         super().__init__(resources.combat_menu, batch=batch, group=menu_group)
-
-        set_texture_mag_filter(self._texture)
 
         self.scale = 4
         x_pos = screen_width - self.width - 25

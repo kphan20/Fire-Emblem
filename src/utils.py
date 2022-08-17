@@ -1,5 +1,3 @@
-from pyglet.gl import glBindTexture, glTexParameteri, GL_TEXTURE_MAG_FILTER, GL_NEAREST
-
 TILE_SIZE = 16
 TILE_SCALE = 5
 
@@ -15,12 +13,3 @@ GRAY_TINT = (150, 150, 150)
 
 S_RANK = 5
 DOUBLING_CONST = 4
-
-
-def set_texture_mag_filter(texture):
-    glBindTexture(texture.target, texture.id)
-    glTexParameteri(texture.target, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
-    # glTexParameteri(
-    #         texture.target, GL_TEXTURE_MIN_FILTER, GL_NEAREST
-    #     )
-    # glBindTexture(texture.target, 0)

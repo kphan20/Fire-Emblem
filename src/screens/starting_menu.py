@@ -1,12 +1,12 @@
 from typing import List
 from game import resources
-from pyglet.sprite import Sprite
 from pyglet.graphics import OrderedGroup
 from pyglet.window import key
 from pyglet.text import Label
 from pyglet.shapes import Rectangle
 
 from .screen import ImageScreen
+from extensions import GBASprite as Sprite
 
 
 class MenuItem:
