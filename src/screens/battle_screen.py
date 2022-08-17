@@ -14,6 +14,7 @@ from game.game_formulas import (
     crit_accuracy_calc,
 )
 from game.tile import generate_map_tiles
+from game.affinity import Affinity
 from .screen import Screen
 from .battle_screen_helpers.tile_helpers import (
     generate_empty_array,
@@ -26,86 +27,36 @@ from .battle_screen_helpers.tile_helpers import (
     draw_path,
     update_supports_for_unit,
 )
-from .menus.combat_info import CombatMenu
+from .battle_screen_helpers.pathfinder_helpers import (
+    four_direction_decorator,
+    coord_dict,
+    path_resources,
+    arrow_dict,
+    arrow_head_list,
+    arrow_image_config,
+    root_config,
+    arrow_key_dict,
+)
+from .menus import CombatMenu, UnitMenu
 import utils
+from enum import Enum
 
 
-def four_direction_decorator(func):
-    """Convenience decorator for algorithms requiring searching in four directions
-
-    Args:
-        func (function): Function to be executed four times
-    """
-
-    def wrapper(x, y, *args, **kwargs):
-        # One function in path_finder requires the returned values
-        returned_values = [
-            func(x + 1, y, *args, **kwargs),
-            func(x - 1, y, *args, **kwargs),
-            func(x, y + 1, *args, **kwargs),
-            func(x, y - 1, *args, **kwargs),
-        ]
-        return returned_values
-
-    return wrapper
+class ViewState(Enum):
+    NOTHING_SELECTED = 0
+    MOVEMENT = 1
+    ENEMIES_IN_RANGE = 2
+    NO_TARGETS = 3
+    WEAPON_SELECTION = 4
+    ATTACK_SELECTION = 5
+    TURN_MENU = 6
 
 
-# for path_finder method
-
-# Used to retrieve the coordinates of the tiles in the path
-# 0, 1, 2, 3 represents right, left, up, down respectively
-coord_dict = {
-    0: lambda x, y: (x + 1, y),
-    1: lambda x, y: (x - 1, y),
-    2: lambda x, y: (x, y + 1),
-    3: lambda x, y: (x, y - 1),
-}
-path_resources = resources.path_arrows_dict
-arrow_dict = {
-    (0, 0): "straightHorizontal",
-    (0, 2): "elbowLeftUp",
-    (0, 3): "elbowLeftDown",
-    (1, 1): "straightHorizontal",
-    (1, 2): "elbowRightUp",
-    (1, 3): "elbowRightDown",
-    (2, 0): "elbowRightDown",
-    (2, 1): "elbowLeftDown",
-    (2, 2): "straightVertical",
-    (3, 0): "elbowRightUp",
-    (3, 1): "elbowLeftUp",
-    (3, 3): "straightVertical",
-}
-arrow_head_list = [
-    "arrowLeft",
-    "arrowRight",
-    "arrowDown",
-    "arrowUp",
-]
-arrow_image_config = {
-    "straightHorizontal": (80, 40, 40, 20),
-    "straightVertical": (40, 80, 20, 40),
-    "elbowLeftUp": (60, 60, 40, 20),
-    "elbowLeftDown": (60, 60, 40, 40),
-    "elbowRightUp": (60, 60, 20, 20),
-    "elbowRightDown": (60, 60, 20, 40),
-    "arrowLeft": (40, 80, 0, 40),
-    "arrowRight": (40, 80, 40, 40),
-    "arrowDown": (80, 40, 40, 0),
-    "arrowUp": (80, 40, 40, 40),
-}
-root_config = {
-    "rootLeft": (40, 20),
-    "rootRight": (0, 20),
-    "rootUp": (20, 0),
-    "rootDown": (20, 40),
-}
-
-# on_key_press
-arrow_key_dict = {
-    key.RIGHT: lambda x, y: (x + 1, y),
-    key.LEFT: lambda x, y: (x - 1, y),
-    key.UP: lambda x, y: (x, y + 1),
-    key.DOWN: lambda x, y: (x, y - 1),
+no_scroll_viewstates = {
+    ViewState.ENEMIES_IN_RANGE,
+    ViewState.NO_TARGETS,
+    ViewState.WEAPON_SELECTION,
+    ViewState.TURN_MENU,
 }
 
 
@@ -127,7 +78,15 @@ class BattleScreen(Screen, key.KeyStateHandler):
         self.menu = OrderedGroup(3)
         self.text = OrderedGroup(4)
 
-        self.combat_menu_sprite = CombatMenu(None, self.menu, self.text, width)
+        self.forecast_menu_sprite = CombatMenu(self.menu, self.text, width)
+
+        self.unit_menu_sprite = UnitMenu(self.menu)
+
+        self.weapon_menu_sprite = UnitMenu(self.menu)
+
+        self.turn_menu_sprite = UnitMenu(self.menu)
+
+        self.current_view = ViewState.NOTHING_SELECTED
 
         # coordinates of the cursor/selector
         self.current_x = 0
@@ -138,8 +97,6 @@ class BattleScreen(Screen, key.KeyStateHandler):
         self.bot_left_x = 0
         self.bot_left_y = 0
 
-        # flag as to whether the selected unit is about to attack
-        self.attack_view = False
         # stores coordinates of enemies in selected character's range
         self.enemies_in_range = []
 
@@ -180,10 +137,17 @@ class BattleScreen(Screen, key.KeyStateHandler):
                 self.tiles[row][col].set_batch(self.batch)
 
         self.test_character = Character(
-            resources.overworld_anim, self.batch, self.foreground
+            resources.overworld_anim,
+            self.batch,
+            self.foreground,
+            affinity=Affinity.FIRE,
         )
         self.test_character2 = Character(
-            resources.player_image, self.batch, self.foreground, team=0
+            resources.player_image,
+            self.batch,
+            self.foreground,
+            team=0,
+            supports={self.test_character: 3},
         )
         self.test_character3 = Character(
             resources.player_image, self.batch, self.foreground, team=1
@@ -204,7 +168,8 @@ class BattleScreen(Screen, key.KeyStateHandler):
                 5,
                 5,
                 WeaponType.SWORD,
-                weapon_range=WeaponRange(3, 10),
+                might=1,
+                weapon_range=WeaponRange(1, 1),
                 hit=100,
             )
         )
@@ -417,7 +382,6 @@ class BattleScreen(Screen, key.KeyStateHandler):
         """Used to reset class variables after unit selection"""
         self.selected_unit = None
         self.enemies_in_range = []
-        self.attack_view = False
         self.selected_enemy = None
 
     def shift_tiles(self):
@@ -541,116 +505,124 @@ class BattleScreen(Screen, key.KeyStateHandler):
         self.tile_selector.x = new_x * self.ADJUSTED_TILE_SIZE
         self.tile_selector.y = new_y * self.ADJUSTED_TILE_SIZE
 
+    def draw_unit_movement(self):
+        weapon_range = self.selected_unit.get_weapon_range()
+
+        # TODO-replace with actual character stats
+        self.current_moves = self.move_finder(
+            self.current_x, self.current_y, 8, weapon_range.max_range
+        )
+        color_tiles(
+            self.tiles,
+            self.current_moves,
+            weapon_range.min_range,
+            weapon_range.max_range,
+        )
+
+    def reset_to_movement(self):
+        # TODO remove this later
+        self.reset_camera()
+
+        self.unit_menu_sprite.set_batch(None)
+
+        # remove preview of character from tile
+        self.tiles[self.selected_y][self.selected_x].character = None
+
+        # move selected unit to its original square
+        self.tiles[self.selected_starting_y][self.selected_starting_x].set_character(
+            self.selected_unit
+        )
+
+        # resets to normal selector animation
+        self.tile_selector.image = resources.tile_selector_animation
+
+        self.current_x, self.current_y = (
+            self.selected_starting_x,
+            self.selected_starting_y,
+        )
+        self.selected_x, self.selected_y = (
+            self.selected_starting_x,
+            self.selected_starting_y,
+        )
+
+        self.tile_selector.batch = self.batch
+        self.move_tile_selector(
+            self.current_x - self.bot_left_x, self.current_y - self.bot_left_y
+        )
+
+        temp = self.selected_unit
+
+        self.reset_after_select()
+        # removes markings from tiles
+        reset_tiles(self.tiles)
+
+        self.selected_unit = temp
+        self.draw_unit_movement()
+        self.current_view = ViewState.MOVEMENT
+
+    def reset_camera(self):
+        # move camera to its original position
+        # eventually transition to animation
+        if (
+            self.bot_left_starting_x != self.bot_left_x
+            or self.bot_left_starting_y != self.bot_left_y
+        ):
+            # just going to clear and reset whole screen
+            for row in range(self.screen_tile_height):
+                rowNum = self.bot_left_y + row
+                for col in range(self.screen_tile_width):
+                    self.tiles[rowNum][self.bot_left_x + col].set_batch(None)
+
+            self.bot_left_x, self.bot_left_y = (
+                self.bot_left_starting_x,
+                self.bot_left_starting_y,
+            )
+            for row in range(self.screen_tile_height):
+                rowNum = self.bot_left_y + row
+                for col in range(self.screen_tile_width):
+                    self.tiles[rowNum][self.bot_left_x + col].set_batch(self.batch)
+            self.shift_tiles()
+
+    def get_combat_forecast(self):
+
+        update_supports_for_unit(
+            self.tiles,
+            self.selected_unit,
+            self.current_x,
+            self.current_y,
+        )
+        enemy_x, enemy_y, can_counter = self.enemies_in_range[self.selected_enemy]
+        enemy = self.tiles[enemy_y][enemy_x].character
+
+        update_supports_for_unit(self.tiles, enemy, enemy_x, enemy_y)
+        self.forecast_menu_sprite.update_text_with_characters(
+            self.selected_unit,
+            enemy,
+            can_counter,
+        )
+
+    def move_tile_selector_to_enemy(self):
+        enemy_x, enemy_y, _ = self.enemies_in_range[self.selected_enemy]
+        self.move_tile_selector(enemy_x - self.bot_left_x, enemy_y - self.bot_left_y)
+
+    def end_turn(self):
+        for unit in self.current_units:
+            unit.refresh()
+        self.teams[self.current_team] = self.current_units
+        self.get_next_team()
+
+    def unit_was_moved(self):
+        # reset
+        self.fresh_units.remove(self.selected_unit)
+        self.selected_unit.character_moved()
+        if len(self.fresh_units) == 0:
+            self.end_turn()
+
     def on_key_press(self, symbol, modifiers):
         super().on_key_press(symbol, modifiers)
 
-        if symbol == key.E:
-            if self.selected_unit:
-                # handles when a unit has been selected for movement/attack
-                if self.attack_view:
-                    if self.enemies_in_range:
-                        # TODO-handle attacking an enemy here
-                        # TODO-add terrain bonuses
-                        self.combat_menu_sprite.set_batch(None)
-                        update_supports_for_unit(
-                            self.tiles,
-                            self.selected_unit,
-                            self.current_x,
-                            self.current_y,
-                        )
-
-                        enemy_x, enemy_y, can_counter = self.enemies_in_range[
-                            self.selected_enemy
-                        ]
-                        enemy = self.tiles[enemy_y][enemy_x].character
-
-                        update_supports_for_unit(self.tiles, enemy, enemy_x, enemy_y)
-
-                        if BattleScreen.perform_attack(self.selected_unit, enemy):
-                            self.teams[enemy.team].remove(enemy)
-                            self.tiles[enemy_y][enemy_x].character = None
-                            enemy.delete()
-                        elif can_counter and BattleScreen.perform_attack(
-                            enemy, self.selected_unit
-                        ):
-                            self.current_units.remove(self.selected_unit)
-                            self.tiles[self.current_y][self.current_x].character = None
-                            self.selected_unit.delete()
-
-                        self.tile_selector.image = resources.tile_selector_animation
-                        self.move_tile_selector(
-                            self.current_x - self.bot_left_x,
-                            self.current_y - self.bot_left_y,
-                        )
-
-                    # reset
-                    self.fresh_units.remove(self.selected_unit)
-                    self.selected_unit.character_moved()
-                    if len(self.fresh_units) == 0:
-                        for unit in self.current_units:
-                            unit.refresh()
-                        self.teams[self.current_team] = self.current_units
-                        self.get_next_team()
-
-                    reset_tiles(self.tiles)
-                    self.reset_after_select()
-                    return
-
-                if self.current_moves[self.current_y][self.current_x] > 0 and (
-                    self.tiles[self.current_y][self.current_x].character is None
-                    or self.tiles[self.current_y][self.current_x].character
-                    is self.selected_unit
-                ):
-
-                    self.tiles[self.selected_starting_y][
-                        self.selected_starting_x
-                    ].character = None
-
-                    # move selected character
-                    self.tiles[self.current_y][self.current_x].set_character(
-                        self.selected_unit
-                    )
-
-                    # updates current character coordinates
-                    self.selected_x, self.selected_y = self.current_x, self.current_y
-
-                    # fill in red attack squares
-                    reset_tiles(self.tiles)
-
-                    weapon_range = self.selected_unit.get_weapon_range()
-
-                    self.attack_view = True
-                    self.enemies_in_range = find_enemies_in_range(
-                        self.selected_unit,
-                        self.tiles,
-                        self.current_x,
-                        self.current_y,
-                        weapon_range.min_range,
-                        weapon_range.max_range,
-                    )
-                    if self.enemies_in_range:
-                        self.tile_selector.image = (
-                            resources.tile_selector_attack_animation
-                        )
-                        self.selected_enemy = 0
-                        enemy_x, enemy_y, can_counter = self.enemies_in_range[0]
-                        self.combat_menu_sprite.update_text_with_characters(
-                            self.selected_unit,
-                            self.tiles[enemy_y][enemy_x].character,
-                            can_counter,
-                        )
-                        self.move_tile_selector(
-                            enemy_x - self.bot_left_x, enemy_y - self.bot_left_y
-                        )
-                        self.combat_menu_sprite.set_batch(self.batch)
-                    else:
-                        # remove coloring if no enemies in range
-                        reset_tiles(self.tiles)
-
-                    return  # unnecessary
-            else:
-                # no unit selected
-
+        if self.current_view == ViewState.NOTHING_SELECTED:
+            if symbol == key.E:
                 character = self.tiles[self.current_y][self.current_x].character
 
                 # if character on selected tile
@@ -674,59 +646,70 @@ class BattleScreen(Screen, key.KeyStateHandler):
                     )
                     self.selected_unit = character
 
-                    weapon_range = character.get_weapon_range()
+                    self.draw_unit_movement()
+                    self.current_view = ViewState.MOVEMENT
+                else:
+                    # TODO add general menu here
+                    self.turn_menu_sprite.set_batch(self.batch)
+                    self.current_view = ViewState.TURN_MENU
 
-                    # TODO-replace with actual character stats
-                    self.current_moves = self.move_finder(
-                        self.current_x, self.current_y, 8, weapon_range.max_range
+        elif self.current_view == ViewState.TURN_MENU:
+            if symbol == key.E:
+                # TODO this is currently the end turn functionality
+                self.end_turn()
+                self.turn_menu_sprite.set_batch(None)
+                self.current_view = ViewState.NOTHING_SELECTED
+            elif symbol == key.Q:
+                self.turn_menu_sprite.set_batch(None)
+                self.current_view = ViewState.NOTHING_SELECTED
+
+        elif self.current_view == ViewState.MOVEMENT:
+            if symbol == key.E:
+                # TODO reimplement camera reset to only be on movement view
+                if self.current_moves[self.current_y][self.current_x] > 0 and (
+                    self.tiles[self.current_y][self.current_x].character is None
+                    or self.tiles[self.current_y][self.current_x].character
+                    is self.selected_unit
+                ):
+
+                    self.tiles[self.selected_starting_y][
+                        self.selected_starting_x
+                    ].character = None
+
+                    # move selected character
+                    self.tiles[self.current_y][self.current_x].set_character(
+                        self.selected_unit
                     )
-                    color_tiles(
+
+                    # updates current character coordinates
+                    self.selected_x, self.selected_y = self.current_x, self.current_y
+
+                    # fill in red attack squares
+                    reset_tiles(self.tiles)
+
+                    weapon_range = self.selected_unit.get_weapon_range()
+
+                    # TODO implement searching for enemies in range with multiple weapons
+                    self.enemies_in_range = find_enemies_in_range(
+                        self.selected_unit,
                         self.tiles,
-                        self.current_moves,
+                        self.current_x,
+                        self.current_y,
                         weapon_range.min_range,
                         weapon_range.max_range,
                     )
-                    return  # unnecessary
-            return
-        if symbol == key.Q:
-            if self.selected_unit:
-                # character was moved to new square temporarily
-                if self.attack_view:
-                    # remove preview of character from tile
-                    self.tiles[self.selected_y][self.selected_x].character = None
+                    if self.enemies_in_range:
+                        # TODO update this to new flow
+                        self.current_view = ViewState.ENEMIES_IN_RANGE
+                    else:
+                        # remove coloring if no enemies in range
+                        reset_tiles(self.tiles)
+                        self.current_view = ViewState.NO_TARGETS
 
-                    # move selected unit to its original square
-                    self.tiles[self.selected_starting_y][
-                        self.selected_starting_x
-                    ].set_character(self.selected_unit)
-
-                    # resets to normal selector animation
-                    self.tile_selector.image = resources.tile_selector_animation
-
-                # move camera to its original position
-                # eventually transition to animation
-                if (
-                    self.bot_left_starting_x != self.bot_left_x
-                    or self.bot_left_starting_y != self.bot_left_y
-                ):
-                    # just going to clear and reset whole screen
-                    for row in range(self.screen_tile_height):
-                        rowNum = self.bot_left_y + row
-                        for col in range(self.screen_tile_width):
-                            self.tiles[rowNum][self.bot_left_x + col].set_batch(None)
-
-                    self.bot_left_x, self.bot_left_y = (
-                        self.bot_left_starting_x,
-                        self.bot_left_starting_y,
-                    )
-                    for row in range(self.screen_tile_height):
-                        rowNum = self.bot_left_y + row
-                        for col in range(self.screen_tile_width):
-                            self.tiles[rowNum][self.bot_left_x + col].set_batch(
-                                self.batch
-                            )
-                    self.shift_tiles()
-
+                    self.unit_menu_sprite.set_batch(self.batch)
+                    self.tile_selector.batch = None
+            elif symbol == key.Q:
+                self.reset_camera()
                 # move selector to original square
                 self.current_x, self.current_y = (
                     self.selected_starting_x,
@@ -739,15 +722,99 @@ class BattleScreen(Screen, key.KeyStateHandler):
 
                 self.reset_after_select()
 
-            # removes markings from tiles
-            reset_tiles(self.tiles)
-            self.combat_menu_sprite.set_batch(None)
-            return
+                # removes markings from tiles
+                reset_tiles(self.tiles)
+
+                self.current_view = ViewState.NOTHING_SELECTED
+
+        elif self.current_view == ViewState.ENEMIES_IN_RANGE:
+            if symbol == key.E:
+                # TODO add menu option select
+                self.unit_menu_sprite.set_batch(None)
+                self.weapon_menu_sprite.set_batch(self.batch)
+                self.current_view = ViewState.WEAPON_SELECTION
+            elif symbol == key.Q:
+                self.reset_to_movement()
+
+        elif self.current_view == ViewState.NO_TARGETS:
+            if symbol == key.E:
+                # TODO menu items
+                # algorithm for wait option
+                self.unit_menu_sprite.set_batch(None)
+                self.tile_selector.batch = self.batch
+                self.unit_was_moved()
+
+                self.current_view = ViewState.NOTHING_SELECTED
+            elif symbol == key.Q:
+                self.reset_to_movement()
+
+        elif self.current_view == ViewState.WEAPON_SELECTION:
+            if symbol == key.E:
+
+                self.tile_selector.image = resources.tile_selector_attack_animation
+                self.tile_selector.batch = self.batch
+                self.selected_enemy = 0
+                self.move_tile_selector_to_enemy()
+
+                self.weapon_menu_sprite.set_batch(None)
+                self.forecast_menu_sprite.set_batch(self.batch)
+                self.get_combat_forecast()
+
+                # TODO add changing equipped weapon
+                self.current_view = ViewState.ATTACK_SELECTION
+            elif symbol == key.Q:
+                self.weapon_menu_sprite.set_batch(None)
+                self.current_view = ViewState.ENEMIES_IN_RANGE
+
+        elif self.current_view == ViewState.ATTACK_SELECTION:
+            if symbol == key.E:
+                # TODO-add terrain bonuses
+
+                self.forecast_menu_sprite.set_batch(None)
+
+                enemy_x, enemy_y, can_counter = self.enemies_in_range[
+                    self.selected_enemy
+                ]
+                enemy = self.tiles[enemy_y][enemy_x].character
+
+                if BattleScreen.perform_attack(self.selected_unit, enemy):
+                    self.teams[enemy.team].remove(enemy)
+                    self.tiles[enemy_y][enemy_x].character = None
+                    enemy.delete()
+                elif can_counter and BattleScreen.perform_attack(
+                    enemy, self.selected_unit
+                ):
+                    self.current_units.remove(self.selected_unit)
+                    self.tiles[self.current_y][self.current_x].character = None
+                    self.selected_unit.delete()
+
+                self.tile_selector.image = resources.tile_selector_animation
+                self.move_tile_selector(
+                    self.current_x - self.bot_left_x,
+                    self.current_y - self.bot_left_y,
+                )
+
+                # reset
+                self.unit_was_moved()
+
+                reset_tiles(self.tiles)
+                self.reset_after_select()
+            elif symbol == key.Q:
+                # TODO implement this
+                self.tile_selector.batch = None
+                self.weapon_menu_sprite.set_batch(self.batch)
+                self.forecast_menu_sprite.set_batch(None)
+
+                self.current_view = ViewState.WEAPON_SELECTION
+        print(self.current_view)
+        return
 
     def draw(self):
         self.batch.draw()
 
     def update(self):
+        if self.current_view in no_scroll_viewstates:
+            return
         options = [key.RIGHT, key.LEFT, key.UP, key.DOWN]
         change_x = 0
         change_y = 0
@@ -764,14 +831,14 @@ class BattleScreen(Screen, key.KeyStateHandler):
             if self[option]:
                 self.camera_bounds(option)
 
-        if not self.attack_view:
+        if self.current_view != ViewState.ATTACK_SELECTION:
             self.current_x = self.clamp(self.tiles[0], self.current_x + change_x)
             self.current_y = self.clamp(self.tiles, self.current_y + change_y)
             self.move_tile_selector(
                 self.current_x - self.bot_left_x, self.current_y - self.bot_left_y
             )
             # draws path if not attacking and unit is selected
-            if self.selected_unit:
+            if self.current_view == ViewState.MOVEMENT:
                 if self.current_moves[self.current_y][self.current_x] > 0:
                     reset_tiles(self.tiles)
                     weapon_range = self.selected_unit.get_weapon_range()
@@ -787,7 +854,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
                             self.current_x, self.current_y, self.current_moves
                         ),
                     )
-        elif self.enemies_in_range:
+        else:
             scroll_direction = change_x + change_y
             scroll_direction /= abs(scroll_direction)
 
@@ -796,13 +863,6 @@ class BattleScreen(Screen, key.KeyStateHandler):
             num_enemies = len(self.enemies_in_range)
             self.selected_enemy = (self.selected_enemy + num_enemies) % num_enemies
 
-            enemy_x, enemy_y, can_counter = self.enemies_in_range[self.selected_enemy]
-            self.move_tile_selector(
-                enemy_x - self.bot_left_x, enemy_y - self.bot_left_y
-            )
+            self.move_tile_selector_to_enemy()
 
-            enemy = self.tiles[enemy_y][enemy_x].character
-            curr_unit = self.selected_unit
-            self.combat_menu_sprite.update_text_with_characters(
-                curr_unit, enemy, can_counter
-            )
+            self.get_combat_forecast()
