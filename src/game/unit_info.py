@@ -1,4 +1,5 @@
-from typing import NamedTuple
+from typing import NamedTuple, Dict
+from enum import Enum
 
 
 def add_tuples(first, second):
@@ -44,30 +45,31 @@ class SupportBonuses(NamedTuple):
         return self.__class__(*(field1 * scalar for field1 in self))
 
 
+class AttributeTypes(Enum):
+    IS_FLIER = 0
+    IS_MOUNTED = 1
+    IS_ARMORED = 2
+    IS_DRAGON = 3
+    IS_SWORD_CLASS = 4
+    IS_MONSTER = 5
+    IS_DARK_DRUID = 6
+
+
 class Class:
     """Will be used to categorize units"""
 
     # __slots__ = ("terrain_cost", "mov", "con", "class_crit", "classname")
 
     def __init__(
-        self, terrain_cost, mov, con, class_crit, class_attributes={}, classname=""
+        self, terrain_cost, mov, class_crit, class_attributes=dict(), classname=""
     ):
         self.terrain_cost = terrain_cost
         self.mov = mov
-        self.con = con
         self.class_crit = class_crit
         self.classname = classname
 
         # maybe extract this out to a class attributes class
-        self.class_attributes = class_attributes
+        self.class_attributes: Dict = class_attributes
 
     def set_classname(self, name):
         self.classname = name
-
-    def calc_aid(self):
-        """Used to calculate the aid based on mount and con
-
-        Returns:
-            int: Aid value used for rescue calculation
-        """
-        return self.con - 1

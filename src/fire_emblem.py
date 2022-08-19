@@ -1,6 +1,7 @@
 import pyglet
 from screens import Screen, StartingScreen, StartingMenu, BattleScreen
 from game import resources
+from utils import UPDATES_PER_SECOND
 
 
 class Window(pyglet.window.Window):
@@ -21,6 +22,11 @@ class Window(pyglet.window.Window):
         if not battle_screen_test:
             self.current_screen.push_handlers(self)
         self.push_handlers(self.current_screen)
+
+        self.fps_display = pyglet.window.FPSDisplay(window=self)
+        self.fps_display.label = pyglet.text.Label(
+            x=self.width - 20, y=self.height - 20
+        )
 
     def change_screen(self, new_screen: Screen):
         if self.current_screen:
@@ -51,8 +57,9 @@ class Window(pyglet.window.Window):
         self.clear()
         # self.background.blit(0, 0)
         self.current_screen.draw()
+        self.fps_display.draw()
 
 
-window = Window(True)
-pyglet.clock.schedule_interval(window.update, 1 / 15)
+window = Window()
+pyglet.clock.schedule_interval(window.update, 1 / UPDATES_PER_SECOND)
 pyglet.app.run()

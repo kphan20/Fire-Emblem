@@ -71,6 +71,12 @@ menu_option = pyglet.resource.image("menu/menu option.png")
 
 overworld = pyglet.resource.image("characters/eliwoodoverworld.png")
 overworld_seq = pyglet.image.ImageGrid(overworld, 3, 1)
-overworld_anim = pyglet.image.Animation.from_image_sequence(overworld_seq, duration=0.2)
+overworld_anim = pyglet.image.Animation.from_image_sequence(overworld_seq, duration=0.5)
 
 combat_menu = pyglet.resource.image("gameplayui/combat_info.png")
+
+menu_hand = pyglet.resource.image("gameplayui/menu_hand.png")
+
+unit_menu = pyglet.resource.image("gameplayui/test4.png")
+
+carry_box = pyglet.resource.image("gameplayui/carry_box.png")
