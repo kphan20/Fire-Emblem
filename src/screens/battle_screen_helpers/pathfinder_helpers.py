@@ -74,8 +74,8 @@ root_config = {
 
 # on_key_press
 arrow_key_dict = {
-    key.RIGHT: lambda x, y: (x + 1, y),
-    key.LEFT: lambda x, y: (x - 1, y),
-    key.UP: lambda x, y: (x, y + 1),
-    key.DOWN: lambda x, y: (x, y - 1),
+    key.RIGHT: (1, 0),
+    key.LEFT: (-1, 0),
+    key.UP: (0, 1),
+    key.DOWN: (0, -1),
 }
