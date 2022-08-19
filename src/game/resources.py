@@ -78,3 +78,5 @@ combat_menu = pyglet.resource.image("gameplayui/combat_info.png")
 menu_hand = pyglet.resource.image("gameplayui/menu_hand.png")
 
 unit_menu = pyglet.resource.image("gameplayui/test4.png")
+
+carry_box = pyglet.resource.image("gameplayui/carry_box.png")

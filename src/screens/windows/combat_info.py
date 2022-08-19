@@ -1,6 +1,6 @@
 from typing import Tuple
 import pyglet
-from pyglet.graphics import Batch, Group
+from pyglet.graphics import Batch, OrderedGroup
 from game import resources
 from game.unit import Character
 from game.game_formulas import (
@@ -22,16 +22,17 @@ current_x_offset = 200
 class CombatMenu(GBASprite):
     def __init__(
         self,
-        menu_group: Group,
-        text_group: Group,
+        menu_group: OrderedGroup,
+        text_group: OrderedGroup,
         screen_width: int,
+        screen_height: int,
         batch: Batch = None,
     ):
         super().__init__(resources.combat_menu, batch=batch, group=menu_group)
 
         self.scale = 4
         x_pos = screen_width - self.width - 25
-        y_pos = 135
+        y_pos = screen_height - self.height - 25
         self.position = (x_pos, y_pos)
 
         self.hp = pyglet.text.Label(batch=batch, group=text_group)

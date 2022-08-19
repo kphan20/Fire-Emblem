@@ -1,35 +1,49 @@
-from typing import List
+from typing import Callable, List
 from game import resources
-from pyglet.graphics import OrderedGroup
+from pyglet.graphics import OrderedGroup, Batch
 from pyglet.window import key
 from pyglet.text import Label
 from pyglet.shapes import Rectangle
 
 from .screen import ImageScreen
-from extensions import GBASprite as Sprite
+from .menu_item import MenuItem
 
 
-class MenuItem:
-    def __init__(self, screen_width, screen_height, position, on_click, group, text):
+class StartingMenuItem(MenuItem):
+    def __init__(
+        self,
+        on_click: Callable,
+        group: OrderedGroup,
+        screen_width: int,
+        screen_height: int,
+        position: int,
+        text: str,
+    ):
         img = resources.menu_option
         img.anchor_x = img.width // 2
         img.anchor_y = img.height // 2
-        self.background_sprite = Sprite(resources.menu_option, group=group)
-        self.background_sprite.scale_x = 16
-        self.background_sprite.scale_y = 4
-        self.background_sprite.x = screen_width // 2
-        self.background_sprite.y = (
-            screen_height - position * self.background_sprite.height
+        super().__init__(
+            img,
+            screen_width // 2,
+            screen_height - position * img.height * 4,
+            on_click,
+            group,
+            16,
+            4,
         )
-        self.on_click = on_click
+
         label_x, label_y = self.background_sprite.position
         self.label = Label(
             text, anchor_x="center", anchor_y="center", x=label_x, y=label_y
         )
 
     def draw(self):
-        self.background_sprite.draw()
+        super().draw()
         self.label.draw()
+
+    def set_batch(self, batch: Batch):
+        super().set_batch(batch)
+        self.label.batch = batch
 
 
 class StartingMenu(ImageScreen):
@@ -38,20 +52,20 @@ class StartingMenu(ImageScreen):
         self.foreground_group = OrderedGroup(1)
         super().__init__(resources.circle_animation, width, height)
         self.options: List[MenuItem] = [
-            MenuItem(
+            StartingMenuItem(
+                self.initiate_battle_screen,
+                self.foreground_group,
                 width,
                 height,
                 1,
-                lambda x: x.initiate_battle_screen(),
-                self.foreground_group,
                 "Battle Screen",
             ),
-            MenuItem(
+            StartingMenuItem(
+                lambda x: print("Options"),
+                self.foreground_group,
                 width,
                 height,
                 2,
-                lambda x: print("Options"),
-                self.foreground_group,
                 "Options",
             ),
         ]
@@ -77,7 +91,7 @@ class StartingMenu(ImageScreen):
         # selects option
         if symbol == key.E:
             # implement change screen wrapper function
-            self.options[self.selected_option].on_click(self)
+            self.options[self.selected_option].on_click()
             return
         elif symbol == key.Q:
             self.initiate_starting_screen()
