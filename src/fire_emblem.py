@@ -1,6 +1,7 @@
 import pyglet
 from screens import Screen, StartingScreen, StartingMenu, BattleScreen
 from game import resources
+from utils import UPDATES_PER_SECOND
 
 
 class Window(pyglet.window.Window):
@@ -60,5 +61,5 @@ class Window(pyglet.window.Window):
 
 
 window = Window()
-pyglet.clock.schedule_interval(window.update, 1 / 20)
+pyglet.clock.schedule_interval(window.update, 1 / UPDATES_PER_SECOND)
 pyglet.app.run()
