@@ -21,7 +21,10 @@ class PointerMenuItem(MenuItem):
         super().__init__(img, x, y, on_click, group, 5, 2)
         label_x = self.background_sprite.x + 20
         label_y = self.background_sprite.y
-        self.label = Label(text, anchor_x="center", x=label_x, y=label_y)
+        self.text_group = OrderedGroup(group.order + 1)
+        self.label = Label(
+            text, group=self.text_group, anchor_x="center", x=label_x, y=label_y
+        )
 
     def draw(self):
         super().draw()

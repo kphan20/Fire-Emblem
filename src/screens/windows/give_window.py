@@ -18,7 +18,10 @@ class GiveWindow(CarryActionWindow):
             screen_height - self.current_unit_info.height - 15,
         )
         self.initialize_positions()
-        self.pointer.rotation = 270
+        self.pointer.rotation = 90
+
+    def update_current_unit(self, character: Character):
+        self.current_unit_label.text = str(character.carried_unit.stats.con)
 
     def update_target(self, character: Character):
-        pass
+        self.target_label.text = str(character.calc_aid())

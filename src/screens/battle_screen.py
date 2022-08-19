@@ -39,7 +39,14 @@ from .battle_screen_helpers.pathfinder_helpers import (
     arrow_key_dict,
 )
 from .battle_screen_helpers.viewstate import ViewState
-from .windows import CombatMenu, PointerMenu, RescueWindow, TakeWindow, GiveWindow
+from .windows import (
+    CombatMenu,
+    PointerMenu,
+    RescueWindow,
+    TakeWindow,
+    GiveWindow,
+    CarryActionWindow,
+)
 import utils
 
 
@@ -48,6 +55,14 @@ no_scroll_viewstates = {
     ViewState.WEAPON_SELECTION,
     ViewState.TURN_MENU,
     ViewState.INVENTORY_MENU,
+}
+
+fixed_scroll_viewstates = {
+    ViewState.TAKE_MENU,
+    ViewState.GIVE_MENU,
+    ViewState.DROP_MENU,
+    ViewState.RESCUE_MENU,
+    ViewState.ATTACK_SELECTION,
 }
 
 
@@ -100,6 +115,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
 
         # stores coordinates of enemies in selected character's range
         self.enemies_in_range = []
+        # TODO consider combining the next three arrays
         self.rescue_in_range = []
         self.take_in_range = []
         self.give_in_range = []
@@ -164,6 +180,9 @@ class BattleScreen(Screen, key.KeyStateHandler):
         self.test_character3 = Character(
             resources.player_image, self.batch, self.foreground, team=1
         )
+        self.test_character4 = Character(
+            resources.overworld_anim, self.batch, self.foreground, stats=Stats(con=1)
+        )
         self.tiles[self.current_y][self.current_x].set_character(self.test_character)
         self.test_character.add_item(
             Weapon(
@@ -175,7 +194,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
                 hit=100,
             )
         )
-        self.test_character2.add_item(
+        self.test_character3.add_item(
             Weapon(
                 5,
                 5,
@@ -187,6 +206,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
         )
         self.tiles[5][4].set_character(self.test_character2)
         self.tiles[4][5].set_character(self.test_character3)
+        self.tiles[3][4].set_character(self.test_character4)
 
         # TODO- initialize team order
         self.teams: OrderedDict[int, List[Character]] = OrderedDict()
@@ -194,6 +214,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
             self.test_character,
             self.test_character2,
             self.test_character3,
+            self.test_character4,
         ]
         for character in self.characters:
             team = self.teams.setdefault(character.team, [])
@@ -203,7 +224,11 @@ class BattleScreen(Screen, key.KeyStateHandler):
 
     def get_next_team(self):
         self.current_team, self.current_units = self.teams.popitem(last=False)
-        self.fresh_units = set(self.current_units[:])
+        self.fresh_units = set(
+            unit for unit in self.current_units if not unit.is_carried
+        )
+        for unit in self.fresh_units:
+            unit.refresh()
         print(self.fresh_units)
 
     @staticmethod
@@ -601,27 +626,37 @@ class BattleScreen(Screen, key.KeyStateHandler):
         enemy_x, enemy_y, _ = self.enemies_in_range[self.selected_enemy]
         self.move_tile_selector(enemy_x, enemy_y)
 
-    def handle_option_clicked(self, coord_arr: List, ind: int, sprite: PointerMenu):
-        self.tile_selector.image = resources.tile_selector_attack_animation
-        self.tile_selector.batch = self.batch
+    def move_tile_selector_to_target(self, coord_arr: List, ind: int):
         tile_x, tile_y = coord_arr[ind]
         self.move_tile_selector(tile_x, tile_y)
+
+    def handle_option_clicked(
+        self, coord_arr: List, ind: int, sprite: PointerMenu = None
+    ):
+        self.tile_selector.image = resources.tile_selector_attack_animation
+        self.tile_selector.batch = self.batch
+        self.move_tile_selector_to_target(coord_arr, ind)
         self.option_menu_sprite.set_batch(None)
-        sprite.set_batch(self.batch)
+        if sprite:
+            sprite.set_batch(self.batch)
 
     def end_turn(self):
-        for unit in self.current_units:
-            unit.refresh()
         self.teams[self.current_team] = self.current_units
         self.get_next_team()
 
     def unit_was_moved(self):
         # reset
-        self.fresh_units.discard(self.selected_unit)
-        self.selected_unit.character_moved()
+        if self.selected_unit:
+            self.fresh_units.discard(self.selected_unit)
+            self.selected_unit.character_moved()
         if len(self.fresh_units) == 0:
             self.end_turn()
         self.current_view = ViewState.NOTHING_SELECTED
+
+    def update_carry_menu(self, coord_arr: List, ind: int, sprite: CarryActionWindow):
+        tile_x, tile_y = coord_arr[ind]
+        sprite.update_current_unit(self.selected_unit)
+        sprite.update_target(self.tiles[tile_y][tile_x].character)
 
     def attack_option(self):
         self.option_menu_sprite.set_batch(None)
@@ -638,6 +673,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
         self.handle_option_clicked(
             self.rescue_in_range, self.selected_rescue, self.rescue_menu_sprite
         )
+        self.update_carry_menu(self.rescue_in_range, 0, self.rescue_menu_sprite)
 
     def take_option(self):
         self.current_view = ViewState.TAKE_MENU
@@ -645,6 +681,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
         self.handle_option_clicked(
             self.take_in_range, self.selected_take, self.take_menu_sprite
         )
+        self.update_carry_menu(self.take_in_range, 0, self.take_menu_sprite)
 
     def give_option(self):
         self.current_view = ViewState.GIVE_MENU
@@ -652,12 +689,14 @@ class BattleScreen(Screen, key.KeyStateHandler):
         self.handle_option_clicked(
             self.give_in_range, self.selected_give, self.give_menu_sprite
         )
+        self.update_carry_menu(self.give_in_range, 0, self.give_menu_sprite)
 
     def drop_option(self):
         self.current_view = ViewState.DROP_MENU
         self.selected_drop = 0
         self.handle_option_clicked(
-            self.drop_in_range, self.selected_drop, self.drop_menu_sprite
+            self.drop_in_range,
+            self.selected_drop,  # self.drop_menu_sprite
         )
 
     def item_option(self):
@@ -675,6 +714,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
     def wait_option(self):
         self.option_menu_sprite.set_batch(None)
         self.tile_selector.batch = self.batch
+        self.tile_selector.image = resources.tile_selector_animation
         self.unit_was_moved()
         reset_tiles(self.tiles)
         self.reset_after_select()
@@ -695,7 +735,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
                 return
             aid = self.selected_unit.calc_aid()
             print(aid)
-            if not neighbor.carried_unit and neighbor.class_type.con <= aid:
+            if not neighbor.carried_unit and neighbor.stats.con <= aid:
                 self.rescue_in_range.append((x, y))
 
         get_ally_neighbors(self.current_x, self.current_y)
@@ -716,7 +756,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
             if self.selected_unit.team != neighbor.team:
                 return
             aid = self.selected_unit.calc_aid()
-            if neighbor.carried_unit and neighbor.carried_unit.class_type.con <= aid:
+            if neighbor.carried_unit and neighbor.carried_unit.stats.con <= aid:
                 self.take_in_range.append((x, y))
 
         get_carrying_neighbors(self.current_x, self.current_y)
@@ -739,7 +779,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
             aid = neighbor.calc_aid()
             if (
                 not neighbor.carried_unit
-                and self.selected_unit.carried_unit.class_type.con <= aid
+                and self.selected_unit.carried_unit.stats.con <= aid
             ):
                 self.give_in_range.append((x, y))
 
@@ -804,20 +844,28 @@ class BattleScreen(Screen, key.KeyStateHandler):
         return options
 
     # TODO change type hint to base class once its created
-    def reset_to_option_menu(self, prev_menu: PointerMenu):
+    def reset_to_option_menu(self, prev_menu: PointerMenu = None):
         self.tile_selector.batch = None
-        prev_menu.set_batch(None)
+        if prev_menu:
+            prev_menu.set_batch(None)
         self.option_menu_sprite.set_batch(self.batch)
         self.current_view = ViewState.OPTION_MENU
 
-    def action_complete(self, prev_menu: PointerMenu):
-        prev_menu.set_batch(None)
+    def action_complete(self, carried_unit: Character, prev_menu: PointerMenu = None):
+        if prev_menu:
+            prev_menu.set_batch(None)
+        carried_unit.character_moved()
         self.tile_selector.image = resources.tile_selector_animation
         self.move_tile_selector(self.selected_x, self.selected_y)
         self.current_x, self.current_y = self.selected_x, self.selected_y
         # TODO consider reset after select
         # do i NEED to reset these variables given the new viewstate architecture?
         self.selected_unit = None
+
+    def handle_drop(self, dropped_unit: Character, dest_x: int, dest_y: int):
+        self.tiles[dest_y][dest_x].set_character(dropped_unit)
+        dropped_unit.is_carried = False
+        dropped_unit.character_moved()
 
     def on_key_press(self, symbol, modifiers):
         super().on_key_press(symbol, modifiers)
@@ -943,7 +991,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
                 self.fresh_units.discard(neighbor)
                 self.unit_was_moved()
 
-                self.action_complete(self.rescue_menu_sprite)
+                self.action_complete(neighbor, self.rescue_menu_sprite)
 
             elif symbol == key.Q:
                 self.reset_to_option_menu(self.rescue_menu_sprite)
@@ -956,7 +1004,9 @@ class BattleScreen(Screen, key.KeyStateHandler):
                 neighbor.carried_unit = None
                 self.unit_was_moved()
 
-                self.action_complete(self.take_menu_sprite)
+                self.action_complete(
+                    self.selected_unit.carried_unit, self.take_menu_sprite
+                )
             elif symbol == key.Q:
                 self.reset_to_option_menu(self.take_menu_sprite)
 
@@ -968,24 +1018,22 @@ class BattleScreen(Screen, key.KeyStateHandler):
                 self.selected_unit.carried_unit = None
                 self.unit_was_moved()
 
-                # self.action_complete(self.give_menu_sprite)
+                self.action_complete(neighbor.carried_unit, self.give_menu_sprite)
             elif symbol == key.Q:
-                pass
-                # self.reset_to_option_menu(self.give_menu_sprite)
+                self.reset_to_option_menu(self.give_menu_sprite)
 
         elif self.current_view == ViewState.DROP_MENU:
             if symbol == key.E:
                 tile_x, tile_y = self.drop_in_range[self.selected_drop]
-                drop_tile = self.tiles[tile_y][tile_x]
-                drop_tile.set_character(self.selected_unit.carried_unit)
-                drop_tile.character.is_carried = False
+                dropped_unit = self.selected_unit.carried_unit
+                self.handle_drop(dropped_unit, tile_x, tile_y)
                 self.selected_unit.carried_unit = None
                 self.unit_was_moved()
 
-                # self.action_complete(self.drop_menu_sprite)
+                # TODO figure out how to handle drop menu
+                self.action_complete(dropped_unit)
             elif symbol == key.Q:
-                pass
-                # self.reset_to_option_menu(self.drop_menu_sprite)
+                self.reset_to_option_menu()
 
         elif self.current_view == ViewState.TRADE_SELECTION:
             if symbol == key.E:
@@ -1031,12 +1079,21 @@ class BattleScreen(Screen, key.KeyStateHandler):
                 if BattleScreen.perform_attack(self.selected_unit, enemy):
                     self.teams[enemy.team].remove(enemy)
                     self.tiles[enemy_y][enemy_x].character = None
+                    if enemy.carried_unit:
+                        self.handle_drop(enemy.carried_unit, enemy_x, enemy_y)
                     enemy.delete()
                 elif can_counter and BattleScreen.perform_attack(
                     enemy, self.selected_unit
                 ):
                     self.current_units.remove(self.selected_unit)
+                    self.fresh_units.remove(self.selected_unit)
                     self.tiles[self.current_y][self.current_x].character = None
+                    if self.selected_unit.carried_unit:
+                        self.handle_drop(
+                            self.selected_unit.carried_unit,
+                            self.current_x,
+                            self.current_y,
+                        )
                     self.selected_unit.delete()
 
                 self.tile_selector.image = resources.tile_selector_animation
@@ -1063,6 +1120,11 @@ class BattleScreen(Screen, key.KeyStateHandler):
     def draw(self):
         self.batch.draw()
 
+    def carry_action_update(self, coord_arr: List, ind: int, sprite: CarryActionWindow):
+        tile_x, tile_y = coord_arr[ind]
+        self.move_tile_selector(tile_x, tile_y)
+        sprite.update_target(self.tiles[tile_y][tile_x].character)
+
     def update(self):
         self.option_menu_sprite.run_pointer_animation()
         if self.current_view in no_scroll_viewstates:
@@ -1083,7 +1145,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
             if self[option]:
                 self.camera_bounds(option)
 
-        if self.current_view != ViewState.ATTACK_SELECTION:
+        if self.current_view not in fixed_scroll_viewstates:
             self.current_x = self.clamp(self.tiles[0], self.current_x + change_x)
             self.current_y = self.clamp(self.tiles, self.current_y + change_y)
             self.move_tile_selector(self.current_x, self.current_y)
@@ -1107,12 +1169,50 @@ class BattleScreen(Screen, key.KeyStateHandler):
         else:
             scroll_direction = change_x + change_y
             scroll_direction /= abs(scroll_direction)
+            scroll_direction = int(scroll_direction)
 
-            # TODO-consider if scroll_direction != 0:
-            self.selected_enemy += int(scroll_direction)
-            num_enemies = len(self.enemies_in_range)
-            self.selected_enemy = (self.selected_enemy + num_enemies) % num_enemies
+            if self.current_view == ViewState.ATTACK_SELECTION:
+                num_enemies = len(self.enemies_in_range)
+                self.selected_enemy = (
+                    self.selected_enemy + scroll_direction + num_enemies
+                ) % num_enemies
 
-            self.move_tile_selector_to_enemy()
+                self.move_tile_selector_to_enemy()
 
-            self.get_combat_forecast()
+                self.get_combat_forecast()
+            elif self.current_view == ViewState.RESCUE_MENU:
+                num_rescue = len(self.rescue_in_range)
+                self.selected_rescue = (
+                    self.selected_rescue + scroll_direction + num_rescue
+                ) % num_rescue
+
+                self.carry_action_update(
+                    self.rescue_in_range, self.selected_rescue, self.rescue_menu_sprite
+                )
+            elif self.current_view == ViewState.GIVE_MENU:
+                num_give = len(self.give_in_range)
+                self.selected_give = (
+                    self.selected_give + scroll_direction + num_give
+                ) % num_give
+
+                self.carry_action_update(
+                    self.give_in_range, self.selected_give, self.give_menu_sprite
+                )
+            elif self.current_view == ViewState.TAKE_MENU:
+                num_take = len(self.take_in_range)
+                self.selected_take = (
+                    self.selected_take + scroll_direction + num_take
+                ) % num_take
+
+                self.carry_action_update(
+                    self.take_in_range, self.selected_take, self.take_menu_sprite
+                )
+            elif self.current_view == ViewState.DROP_MENU:
+                num_drop = len(self.drop_in_range)
+                self.selected_drop = (
+                    self.selected_drop + scroll_direction + num_drop
+                ) % num_drop
+
+                self.move_tile_selector_to_target(
+                    self.drop_in_range, self.selected_drop
+                )

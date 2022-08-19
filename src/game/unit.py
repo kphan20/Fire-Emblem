@@ -68,7 +68,7 @@ class Character(GBASprite):
         self.gained_stats = Stats()  # represents stat boosting items
 
         self.carried_unit = None
-        self.is_carried = True
+        self.is_carried = False
 
         self.is_male = is_male
 
