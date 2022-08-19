@@ -32,16 +32,6 @@ class WeaponType(Enum):
     SECOND_TRIANGLE = {ANIMA: (LIGHT, DARK), DARK: (ANIMA, LIGHT), LIGHT: (DARK, ANIMA)}
 
 
-class ClassAttributes(Enum):
-    IS_FLIER = "IS_FLIER"
-    IS_MOUNTED = "IS_MOUNTED"
-    IS_ARMORED = "IS_ARMORED"
-    IS_DRAGON = "IS_DRAGON"
-    IS_SWORD_CLASS = "IS_SWORD_CLASS"
-    IS_MONSTER = "IS_MONSTER"
-    IS_DARK_DRUID = "IS_DARK_DRUID"
-
-
 class Item:
     def __init__(self, uses, value, effects, item_type: ItemType, uses_left=None):
         self.uses = uses

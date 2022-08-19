@@ -4,7 +4,7 @@ import random
 
 
 from .item import ItemType, Item, Weapon, WeaponRange
-from .unit_info import Stats, Class, SupportBonuses
+from .unit_info import Stats, Class, SupportBonuses, AttributeTypes
 from .affinity import Affinity
 from scraper.utils import stat_names
 import utils
@@ -29,6 +29,7 @@ class Character(GBASprite):
         current_hp=1,
         supports: Dict = dict(),
         affinity: Affinity = None,
+        is_male: bool = True,
     ):
         if hasattr(img, "frames"):
             adjusted_size = utils.TILE_SCALE * utils.TILE_SIZE
@@ -40,7 +41,7 @@ class Character(GBASprite):
         self.name = name
         # Used for game classes (eg. paladin, assassin, etc.)
         self.class_type = class_type  # Class({0: 1, 1: 3}, 0, 0, 0)
-        self.class_type = Class({0: 1, 1: 3}, 0, 0, 0)
+        self.class_type = Class({0: 1, 1: 3}, 0, 0)
 
         # Individual based stats
         # self.battle_sprite = pyglet.sprite.Sprite() # used for battle animation
@@ -64,6 +65,12 @@ class Character(GBASprite):
         )  # bonuses from supports, calculated frequently
 
         self.temp_stats = Stats()  # represents temporary stat changes
+        self.gained_stats = Stats()  # represents stat boosting items
+
+        self.carried_unit = None
+        self.is_carried = True
+
+        self.is_male = is_male
 
     def is_usable_weapon(self, weapon: Item):
         return weapon.item_type == ItemType.WEAPON
@@ -149,3 +156,20 @@ class Character(GBASprite):
 
     def refresh(self):
         self.color = utils.NORMAL_TINT
+
+    def calc_aid(self):
+        """Used to calculate the aid based on mount and con
+
+        Returns:
+            int: Aid value used for rescue calculation
+        """
+        con = self.stats.con
+        if self.class_type.class_attributes.get(AttributeTypes.IS_MOUNTED, False):
+            if self.is_male:
+                return 25 - con
+            return 20 - con
+        return con - 1
+
+    def carry_unit(self, carried: Character):
+        self.carried_unit = carried
+        carried.is_carried = True
