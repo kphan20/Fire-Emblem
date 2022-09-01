@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 from game.tile import Tile
 from pyglet.graphics import Batch
 import utils
@@ -9,8 +9,12 @@ from game.affinity import get_affinity_bonus
 # Stores methods that involve traversing/interacting with the tile array
 
 
-def generate_empty_array(tile_arr):
-    """Generates empty 2D array for movement/attack range calculations
+def generate_empty_array(tile_arr: List[List[int]]) -> List[List[int]]:
+    """
+    Generates empty 2D array for movement/attack range calculations
+
+    Args:
+        tile_arr (list[Tile]): Previous array of tiles
 
     Returns:
         list[list[int]]: 2D array filled with zeroes and is as big as the tilemap
@@ -20,15 +24,21 @@ def generate_empty_array(tile_arr):
     return [[0 for _ in range(width)] for _ in range(height)]
 
 
-def reset_tiles(tiles: List[List[Tile]]):
-    """Changes all the tiles on the tilemap back to normal colors"""
+def reset_tiles(tiles: List[List[Tile]]) -> None:
+    """
+    Changes all the tiles on the tilemap back to normal colors
+
+    Args:
+        tile_arr (list[Tile]): Grid of existing tiles
+    """
     for row in tiles:
         for tile in row:
             tile.clear_tile()
 
 
-def remove_tiles_from_batch(tile_arr: List[Tile]):
-    """Removes tiles from batch as camera moves
+def remove_tiles_from_batch(tile_arr: List[Tile]) -> None:
+    """
+    Removes tiles from batch as camera moves
 
     Args:
         tile_arr (list[Tile]): References to tiles that have gotten out of frame
@@ -37,10 +47,12 @@ def remove_tiles_from_batch(tile_arr: List[Tile]):
         tile.set_batch(None)
 
 
-def add_tiles_to_batch(batch: Batch, tile_arr: List[Tile]):
-    """Adds tiles to batch as camera moves
+def add_tiles_to_batch(batch: Batch, tile_arr: List[Tile]) -> None:
+    """
+    Adds tiles to batch as camera moves
 
     Args:
+        batch (Batch): batch of items currently being drawn on screen
         tile_arr (list[Tile]): References to tiles that just entered frame
     """
     for tile in tile_arr:
@@ -48,12 +60,19 @@ def add_tiles_to_batch(batch: Batch, tile_arr: List[Tile]):
 
 
 def color_tiles(
-    tiles: List[List[Tile]], filler: List[List[int]], min_range=1, max_range=1
-):
-    """Changes the color of the map tiles when a unit is selected
+    tiles: List[List[Tile]],
+    filler: List[List[int]],
+    min_range: int = 1,
+    max_range: int = 1,
+) -> None:
+    """
+    Changes the color of the map tiles when a unit is selected
 
     Args:
+        tiles (List[List[int]]): Existing grid of tiles
         filler (list[list[int]]): 2D array holding valid movement/attack squares
+        min_range (int, optional): Weapon's minimum range. Defaults to 1.
+        max_range (int, optional): Weapon's maximum range. Defaults to 1.
     """
     for y, row in enumerate(filler):
         for x, val in enumerate(row):
@@ -63,8 +82,11 @@ def color_tiles(
                 tiles[y][x].change_tint(utils.RED_TINT)
 
 
-def fill_attacks(current_x, current_y, attack_range, filler):
-    """Depth first search to fill in a unit's attack range
+def fill_attacks(
+    current_x: int, current_y: int, attack_range: int, filler: List[List[int]]
+) -> None:
+    """
+    Depth first search to fill in a unit's attack range
 
     Args:
         current_x (int): Current x coordinate being searched
@@ -93,7 +115,17 @@ def fill_attacks(current_x, current_y, attack_range, filler):
         fill_attacks(current_x, current_y - 1, attack_range - 1, filler)
 
 
-def dist_in_range(unit: Character, manhattan_dist: int):
+def dist_in_range(unit: Character, manhattan_dist: int) -> bool:
+    """
+    Sees if a distance is within a character's weapon range
+
+    Args:
+        unit (Character): unit with the weapon
+        manhattan_dist (int): manhattan distance from unit
+
+    Returns:
+        bool: whether the specified distance is in range or not
+    """
     weapon_range = unit.get_weapon_range()
     return (
         weapon_range.min_range > 0
@@ -104,11 +136,11 @@ def dist_in_range(unit: Character, manhattan_dist: int):
 def find_enemies_in_range(
     unit: Character,
     tiles: List[List[Tile]],
-    unit_x,
-    unit_y,
-    min_range,
-    max_range,
-):
+    unit_x: int,
+    unit_y: int,
+    min_range: int,
+    max_range: int,
+) -> List:
     """Finds the targetable enemies within the selected unit's attack range"""
     x_max, y_max = len(tiles[0]), len(tiles)
 
@@ -138,10 +170,11 @@ def find_enemies_in_range(
     return enemies_in_range
 
 
-def draw_path(tiles: List[List[Tile]], path):
+def draw_path(tiles: List[List[Tile]], path: List[Tuple]):
     """Changes tile colors in path to green
 
     Args:
+        tiles (list[list[Tile]]): Existing grid of tiles
         path (list): List containing path coordinates
     """
     for point in path:
@@ -149,7 +182,18 @@ def draw_path(tiles: List[List[Tile]], path):
             tiles[point[1]][point[0]].set_arrow(point[2])
 
 
-def update_supports_for_unit(tiles: List[List[Tile]], unit: Character, unit_x, unit_y):
+def update_supports_for_unit(
+    tiles: List[List[Tile]], unit: Character, unit_x: int, unit_y: int
+) -> None:
+    """
+    Updates support bonuses for a unit
+
+    Args:
+        tiles (List[List[Tile]]): Existing grid of tiles
+        unit (Character): unit with supports
+        unit_x (int): unit's x location
+        unit_y (int): unit's y location
+    """
     aff = unit.affinity
     supports = unit.supports.keys()
     bonuses = SupportBonuses()

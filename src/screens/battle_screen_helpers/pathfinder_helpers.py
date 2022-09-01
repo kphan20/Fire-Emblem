@@ -1,15 +1,16 @@
+from typing import Callable, List
 from pyglet.window import key
 from game import resources
 
 
-def four_direction_decorator(func):
+def four_direction_decorator(func: Callable):
     """Convenience decorator for algorithms requiring searching in four directions
 
     Args:
         func (function): Function to be executed four times
     """
 
-    def wrapper(x, y, *args, **kwargs):
+    def wrapper(x: int, y: int, *args, **kwargs) -> List:
         # One function in path_finder requires the returned values
         returned_values = [
             func(x + 1, y, *args, **kwargs),

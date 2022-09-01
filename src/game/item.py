@@ -1,5 +1,6 @@
 from __future__ import annotations
 from enum import Enum
+from typing import Dict, Tuple
 
 
 class ItemType(Enum):
@@ -48,7 +49,7 @@ class Item:
 
 
 class WeaponRange:
-    def __init__(self, min_range, max_range):
+    def __init__(self, min_range: int, max_range: int):
         self.min_range = min_range
         self.max_range = max_range
 
@@ -85,21 +86,22 @@ class Weapon(Item):
         self.weapon_exp = weapon_exp
         self.personal_weapon_owner = personal_weapon_owner
         self.is_reaver = is_reaver
-        self.weapon_attributes = (
-            {}
-        )  # will have attribute name keys and multipliers items
+        self.weapon_attributes: Dict[
+            str, float
+        ] = {}  # will have attribute name keys and multipliers items
         self.weapon_range = weapon_range
         if weapon_range is None:
             self.weapon_range = WeaponRange(1, 1)
 
-    def get_weapon_triangle(self, other_weapon: Weapon):
-        """Returns weapon triangle damage and accuracy boost
+    def get_weapon_triangle(self, other_weapon: Weapon) -> Tuple[int, int]:
+        """
+        Calculates net weapon triangle bonus against opposing weapon
 
         Args:
-            other_weapon (Weapon): _description_
+            other_weapon (Weapon): weapon of opponent
 
         Returns:
-            _type_: _description_
+            Tuple[int, int]: damage and accuracy modifiers
         """
         if other_weapon is None or self.weapon_type == other_weapon.weapon_type:
             return 0, 0
@@ -126,7 +128,16 @@ class Weapon(Item):
         accuracy *= reaver_multiplier
         return damage, accuracy
 
-    def get_weapon_effectiveness(self, attribute_dict):
+    def get_weapon_effectiveness(self, attribute_dict: Dict) -> float:
+        """
+        Applies bonuses for a weapon if it has a multiplier for character traits
+
+        Args:
+            attribute_dict (Dict): Character's attributes
+
+        Returns:
+            float: Net multiplier after all attribute modifiers
+        """
         weapon_effectiveness = 1
         for attribute, multiplier in self.weapon_attributes.items():
             if attribute_dict.get(attribute):
