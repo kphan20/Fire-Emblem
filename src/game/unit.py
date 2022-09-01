@@ -31,6 +31,8 @@ class Character(GBASprite):
         affinity: Affinity = None,
         is_male: bool = True,
     ):
+
+        # adjusts unit animation frames to correct size
         if hasattr(img, "frames"):
             adjusted_size = utils.TILE_SCALE * utils.TILE_SIZE
             for frame in img.frames:
@@ -72,26 +74,54 @@ class Character(GBASprite):
 
         self.is_male = is_male
 
-    def is_usable_weapon(self, weapon: Item):
+    def is_usable_weapon(self, weapon: Item) -> bool:
+        """
+        Sees if the current character can use an item as a weapon
+
+        Args:
+            weapon (Item): item being examined
+
+        Returns:
+            bool: indicates whether the item is valid
+        """
+        # TODO expand on this validation
         return weapon.item_type == ItemType.WEAPON
 
-    def get_equipped_weapon_index(self):
+    def get_equipped_weapon_index(self) -> int:
+        """
+        Finds index of first usable weapon
+
+        Returns:
+            int: Index if found, -1 if not
+        """
         for index, item in enumerate(self.items):
             if self.is_usable_weapon(item):
                 return index
-        # if there are no valid weapons in inventory, return None
-        return None
+        # if there are no valid weapons in inventory, return -1
+        return -1
 
     def get_equipped_weapon(self) -> Weapon:
+        """
+        Gets first weapon in inventory
+
+        Returns:
+            Weapon: weapon object that is being equipped
+        """
         index = self.get_equipped_weapon_index()
 
-        return self.items[index] if index is not None else index
+        return self.items[index] if index >= 0 else index
 
     def get_weapon_range(self) -> WeaponRange:
+        """
+        Gets range of equipped weapon
+
+        Returns:
+            WeaponRange: equipped weapon's range or 0 range if there isn't one
+        """
         equipped_weapon = self.get_equipped_weapon()
         return equipped_weapon.weapon_range if equipped_weapon else WeaponRange(0, 0)
 
-    def equip_weapon(self, inventory_slot):
+    def equip_weapon(self, inventory_slot: int) -> None:
         """Changes the current equipped weapon
 
         Args:
@@ -104,29 +134,51 @@ class Character(GBASprite):
         )
 
     def add_item(self, item: Item) -> bool:
+        """
+        Adds an item to the character's inventory
+
+        Args:
+            item (Item): Item to be added
+
+        Returns:
+            bool: success if there is room in the character's inventory
+        """
         if len(self.items) < 5:
             self.items.append(item)
             return True
         return False
 
     @staticmethod
-    def get_growth_stat_increase(percentage):
+    def get_growth_stat_increase(percentage: int) -> int:
+        """
+        Gets stat growth from a given percentage
+
+        Args:
+            percentage (int): Chance of increasing the stat
+
+        Returns:
+            int: Amount that the stat changes
+        """
         base = percentage // 100
         return base + (random.randint(1, 100) <= base % 100)
 
-    def level_up(self):
-        # need to account for level maxes
+    def level_up(self) -> None:
+        """
+        Updates stats after growths
+        """
+        # TODO need to account for level maxes
         self.level += 1
 
-        # need to account for stat maxes
+        # TODO need to account for stat maxes
         new_stats = [
             prev_stat + Character.get_growth_stat_increase(percentage)
             for prev_stat, percentage in zip(self.stats, self.growths)
         ]
         self.stats = Stats(*new_stats)
 
-    def change_level(self, new_level):
-        """Calculates average stats based on given level and growths
+    def change_level(self, new_level: int) -> None:
+        """
+        Calculates average stats based on given level and growths
 
         Args:
             new_level (int): Desired level
@@ -151,14 +203,21 @@ class Character(GBASprite):
         self.current_hp -= damage
         return self.current_hp <= 0
 
-    def character_moved(self):
+    def character_moved(self) -> None:
+        """
+        Handles changes that occur after a character moves
+        """
         self.color = utils.GRAY_TINT
 
-    def refresh(self):
+    def refresh(self) -> None:
+        """
+        Handles changes that occur after a character gains their move
+        """
         self.color = utils.NORMAL_TINT
 
-    def calc_aid(self):
-        """Used to calculate the aid based on mount and con
+    def calc_aid(self) -> int:
+        """
+        Used to calculate the aid based on mount and con
 
         Returns:
             int: Aid value used for rescue calculation
@@ -170,6 +229,12 @@ class Character(GBASprite):
             return 20 - con
         return con - 1
 
-    def carry_unit(self, carried: Character):
+    def carry_unit(self, carried: Character) -> None:
+        """
+        Handles logic for this unit to carry another
+
+        Args:
+            carried (Character): unit being carried
+        """
         self.carried_unit = carried
         carried.is_carried = True

@@ -222,7 +222,10 @@ class BattleScreen(Screen, key.KeyStateHandler):
 
         self.get_next_team()
 
-    def get_next_team(self):
+    def get_next_team(self) -> None:
+        """
+        Ends the turn and prepares the next team that is up
+        """
         self.current_team, self.current_units = self.teams.popitem(last=False)
         self.fresh_units = set(
             unit for unit in self.current_units if not unit.is_carried
@@ -232,8 +235,9 @@ class BattleScreen(Screen, key.KeyStateHandler):
         print(self.fresh_units)
 
     @staticmethod
-    def clamp(list, index):
-        """Checks if a coordinate is within the boundaries of the tilemap
+    def clamp(list: List, index: int) -> int:
+        """
+        Checks if a coordinate is within the boundaries of the tilemap
 
         Args:
             list (list): List denoting the tilemap column/row being used for camera boundaries
@@ -248,8 +252,11 @@ class BattleScreen(Screen, key.KeyStateHandler):
             return 0
         return index
 
-    def move_finder(self, current_x, current_y, max_move, max_attack_range):
-        """Depth first search to fill in a unit's movement range
+    def move_finder(
+        self, current_x: int, current_y: int, max_move: int, max_attack_range: int
+    ):
+        """
+        Depth first search to fill in a unit's movement range
 
         Args:
             current_x (int): Current x coordinate being searched
@@ -309,7 +316,9 @@ class BattleScreen(Screen, key.KeyStateHandler):
         fill_move(current_x, current_y, max_move, filler)
         return filler
 
-    def path_finder(self, destination_x, destination_y, filler: List[List[int]]):
+    def path_finder(
+        self, destination_x: int, destination_y: int, filler: List[List[int]]
+    ):
         """Finds the path from the selected unit's current location to a destination point
 
         Args:
@@ -397,15 +406,16 @@ class BattleScreen(Screen, key.KeyStateHandler):
                 )
             path.reverse()
             return path
+        # TODO change this
         return "outside of range"
 
-    def reset_after_select(self):
+    def reset_after_select(self) -> None:
         """Used to reset class variables after unit selection"""
         self.selected_unit = None
         self.enemies_in_range = []
         self.selected_enemy = None
 
-    def shift_tiles(self):
+    def shift_tiles(self) -> None:
         """Redraws tiles after camera pan"""
         offset_x = 0
         offset_y = 0
@@ -420,7 +430,17 @@ class BattleScreen(Screen, key.KeyStateHandler):
             offset_y += offset_size
 
     @staticmethod
-    def perform_attack(attacking_unit: Character, attacked_unit: Character):
+    def perform_attack(attacking_unit: Character, attacked_unit: Character) -> bool:
+        """
+        Conducts attempted attack between two characters
+
+        Args:
+            attacking_unit (Character): attacking unit
+            attacked_unit (Character): attacked unit
+
+        Returns:
+            bool: whether or not the attacked unit dies
+        """
         acc = accuracy_calc(attacking_unit, attacked_unit, 0)
         if determine_hit(acc):
             crit_acc = crit_accuracy_calc(attacking_unit, attacked_unit)
@@ -430,7 +450,13 @@ class BattleScreen(Screen, key.KeyStateHandler):
             return attacked_unit.take_damage(damage)
         return False
 
-    def camera_bounds(self, direction):
+    def camera_bounds(self, direction: key) -> None:
+        """
+        Sets camera placement based on input
+
+        Args:
+            direction (key): movement key being pressed
+        """
         camera_x_pos = self.current_x - self.bot_left_x
         camera_y_pos = self.current_y - self.bot_left_y
 
@@ -519,7 +545,7 @@ class BattleScreen(Screen, key.KeyStateHandler):
             )
             self.shift_tiles()
 
-    def move_tile_selector(self, new_x: int, new_y: int):
+    def move_tile_selector(self, new_x: int, new_y: int) -> None:
         """
         Takes tile coordinates and moves tile selector to that tile
         relative to camera position
@@ -527,7 +553,10 @@ class BattleScreen(Screen, key.KeyStateHandler):
         self.tile_selector.x = (new_x - self.bot_left_x) * self.ADJUSTED_TILE_SIZE
         self.tile_selector.y = (new_y - self.bot_left_y) * self.ADJUSTED_TILE_SIZE
 
-    def draw_unit_movement(self):
+    def draw_unit_movement(self) -> None:
+        """
+        Colors tiles during movement selection
+        """
         weapon_range = self.selected_unit.get_weapon_range()
         self.current_moves = self.move_finder(
             self.current_x,
@@ -542,7 +571,10 @@ class BattleScreen(Screen, key.KeyStateHandler):
             weapon_range.max_range,
         )
 
-    def reset_to_movement(self):
+    def reset_to_movement(self) -> None:
+        """
+        Resets tiles and camera to movement selection
+        """
         # TODO remove this later
         self.reset_camera()
 
@@ -581,8 +613,8 @@ class BattleScreen(Screen, key.KeyStateHandler):
         self.draw_unit_movement()
         self.current_view = ViewState.MOVEMENT
 
-    def reset_camera(self):
-        # move camera to its original position
+    def reset_camera(self) -> None:
+        """move camera to its original position"""
         # eventually transition to animation
         if (
             self.bot_left_starting_x != self.bot_left_x
@@ -604,7 +636,10 @@ class BattleScreen(Screen, key.KeyStateHandler):
                     self.tiles[rowNum][self.bot_left_x + col].set_batch(self.batch)
             self.shift_tiles()
 
-    def get_combat_forecast(self):
+    def get_combat_forecast(self) -> None:
+        """
+        Gets predictive info for combat between two characters
+        """
 
         update_supports_for_unit(
             self.tiles,

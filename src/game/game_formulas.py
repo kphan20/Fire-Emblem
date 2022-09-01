@@ -4,29 +4,50 @@ from .unit import Character
 from .item import WeaponRank
 
 
-def attack_speed(selected_unit: Character):
-    """Calculates a character's effective attack speed
+def clamp_percentage(calc: float) -> float:
+    """
+    Helper function to clamp functions that output a percentage
+
+    Args:
+        calc (float): value to be clamped
 
     Returns:
-        [type]: [description]
+        float: final value
+    """
+    return 0 if calc < 0 else 100 if calc > 100 else calc
+
+
+def attack_speed(selected_unit: Character) -> int:
+    """
+    Calculates a character's effective attack speed
+
+    Args:
+        selected_unit (Character): unit for calculation
+
+    Returns:
+        int: net speed for the selected unit
     """
     equipped_weapon = selected_unit.get_equipped_weapon()
     speed = selected_unit.stats.spd
+
+    # handles case where weapon is larger than con
     if equipped_weapon:
         burden = selected_unit.stats.con - equipped_weapon.weight
         if burden < 0:
             return speed + burden
+
     return speed
 
 
-def hitrate_calc(attacking_unit: Character):
-    """Calculates a character's accuracy disregarding enemy
+def hitrate_calc(attacking_unit: Character) -> float:
+    """
+    Calculates a character's accuracy disregarding enemy
 
     Args:
-        s_rank (int, optional): [description]. Defaults to 0.
+        attacking_unit (Character): unit that's attacking another
 
     Returns:
-        [type]: [description]
+        float: hitrate in a vacuum
     """
     equipped_weapon = attacking_unit.get_equipped_weapon()
     if equipped_weapon is None:
@@ -49,14 +70,16 @@ def hitrate_calc(attacking_unit: Character):
     )
 
 
-def avoid_calc(attacked_unit: Character, terrain_bonus=0):
-    """Calculates a character's avoidance
+def avoid_calc(attacked_unit: Character, terrain_bonus=0) -> float:
+    """
+    Calculates a character's avoidance
 
     Args:
-        terrain_bonus (int, optional): [description]. Defaults to 0.
+        attacking_unit (Character): unit that is being attacked
+        terrain_bonus (int, optional): Avoid bonus from terrain. Defaults to 0.
 
     Returns:
-        [type]: [description]
+        float: Avoidance for attacked unit
     """
     return (
         attack_speed(attacked_unit) * 2
@@ -66,9 +89,14 @@ def avoid_calc(attacked_unit: Character, terrain_bonus=0):
     )
 
 
-def accuracy_calc(attacking_unit: Character, attacked_unit: Character, terrain_bonus):
+def accuracy_calc(
+    attacking_unit: Character, attacked_unit: Character, terrain_bonus: int
+) -> float:
     """
-    Calculates effective accuracy based on hit rate and enemy avoidance
+    Calculates chance of one unit hitting another
+
+    Returns:
+        float: Net percentage of attacked unit being hit
     """
 
     own_weapon = attacking_unit.get_equipped_weapon()
@@ -85,17 +113,15 @@ def accuracy_calc(attacking_unit: Character, attacked_unit: Character, terrain_b
         + triangle_bonus
     )
 
-    return 0 if calc < 0 else 100 if calc > 100 else calc
+    return clamp_percentage(calc)
 
 
-def attack_power(attacking_unit: Character, attacked_unit: Character):
-    """Calculates character's attack power
-
-    Args:
-        weapon_effectiveness: special attributes (ie bows vs flying)
+def attack_power(attacking_unit: Character, attacked_unit: Character) -> float:
+    """
+    Calculates raw attack strength
 
     Returns:
-        [type]: [description]
+        float: final calculation after weapon effectiveness and other factors
     """
     strength = attacking_unit.stats.str
     equipped_weapon = attacking_unit.get_equipped_weapon()
@@ -115,15 +141,17 @@ def attack_power(attacking_unit: Character, attacked_unit: Character):
     return strength + (might + triangle_damage) * weapon_effectiveness + support
 
 
-def defense_power(attacked_unit: Character, terrain_bonus=0, is_magic=False):
-    """Calculates character's defense
+def defense_power(attacked_unit: Character, terrain_bonus=0, is_magic=False) -> float:
+    """
+    Calculates attacked unit's damage reduction
 
     Args:
-        terrain_bonus (int, optional): [description]. Defaults to 0.
-        is_magic (bool, optional): [description]. Defaults to False.
+        attacked_unit (Character): unit being attacked
+        terrain_bonus (int, optional): defense bonus from terrain. Defaults to 0.
+        is_magic (bool, optional): whether the incoming attack is magic based or not. Defaults to False.
 
     Returns:
-        [type]: [description]
+        float: damage reduction after all bonuses
     """
     # need to somehow account for magic vs strength; currently is_magic
     # enemy weapon in WeaponType.SECOND_TRIANGLE
@@ -133,14 +161,12 @@ def defense_power(attacked_unit: Character, terrain_bonus=0, is_magic=False):
     return terrain_bonus + attacked_unit.stats.def_ + support
 
 
-def critrate_calc(attacking_unit: Character):
-    """Calculates crit rate in a vacuum
-
-    Args:
-        s_rank (int, optional): [description]. Defaults to 0.
+def critrate_calc(attacking_unit: Character) -> float:
+    """
+    Raw chance for character to crit
 
     Returns:
-        [type]: [description]
+        float: crit percentage in a vacuum
     """
     # class critical rates - don't forget them
     equipped_weapon = attacking_unit.get_equipped_weapon()
@@ -160,20 +186,21 @@ def critrate_calc(attacking_unit: Character):
     )
 
 
-def crit_avoid_calc(attacked_unit: Character):
-    """Calculates crit dodge in a vacuum
+def crit_avoid_calc(attacked_unit: Character) -> float:
+    """
+    Calculates crit dodge in a vacuum
 
     Returns:
-        [type]: [description]
+        float: character's inherent resistance to being crit
     """
     return attacked_unit.stats.lck + attacked_unit.support_bonuses.crit_avoid
 
 
-def crit_accuracy_calc(attacking_unit, attacked_unit: Character):
+def crit_accuracy_calc(attacking_unit: Character, attacked_unit: Character) -> float:
     """Calculates crit chance based on own crit rate and enemy crit avoid"""
-    # between 0 and 100
-    # crit rate - crit evade
-    return critrate_calc(attacking_unit) - crit_avoid_calc(attacked_unit)
+    return clamp_percentage(
+        critrate_calc(attacking_unit) - crit_avoid_calc(attacked_unit)
+    )
 
 
 def damage_calc(
@@ -182,25 +209,35 @@ def damage_calc(
     terrain_bonus=0,
     is_magic=False,
     is_crit=False,
-):
-    """Calculates net damage
-
-    Args:
-        enemy ([type]): [description]
+) -> float:
     """
-    # must be >= 0
-    # attack power - defense power
-    # crit is 3x above formula
+    Calculates net damage after defense calculation
+
+    Returns:
+        float: net damage after attack, defense, and crit calculations
+    """
     base = attack_power(attacking_unit, attacked_unit) - defense_power(
         attacked_unit, terrain_bonus, is_magic
     )
     if is_crit:
         base *= 3
 
+    # damage is floored at 0
     return 0 if base < 0 else base
 
 
-def determine_hit(percentage, two_rn=False):
+def determine_hit(percentage: float, two_rn: bool = False) -> bool:
+    """
+    Given a percentage, decides if a character hits their attack
+
+    Args:
+        percentage (float): threshold for a success
+        two_rn (bool, optional):
+            flag to indicate if the success calculation is based on an average or not. Defaults to False.
+
+    Returns:
+        bool: success or miss
+    """
     if two_rn:
         return (random.randint(0, 100) + random.randint(0, 100)) // 2 < percentage
     return random.randint(0, 100) < percentage
